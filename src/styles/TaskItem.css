@@ -1,0 +1,27 @@
+.task-item {
+    background: #ffffff;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  
+  .task-item h3 {
+    margin: 0;
+  }
+  
+  .task-item p {
+    margin: 0.5rem 0;
+  }
+  
+  .task-item select {
+    margin-left: 0.5rem;
+  }
+  

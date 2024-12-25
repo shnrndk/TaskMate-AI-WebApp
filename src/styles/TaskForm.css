@@ -1,0 +1,40 @@
+.task-form {
+    margin: 2rem auto;
+    width: 80%;
+    max-width: 800px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+  }
+  
+  .task-form h2 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #007bff;
+  }
+  
+  .task-form input,
+  .task-form textarea {
+    width: 100%;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
+  
+  .task-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    display: block;
+    margin: 0 auto;
+  }
+  
+  .task-form button:hover {
+    background-color: #0056b3;
+  }
+  
