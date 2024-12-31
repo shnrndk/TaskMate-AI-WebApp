@@ -35,11 +35,14 @@ const TaskList = () => {
   };
 
   const handleStatusChange = async (id, newStatus) => {
+    let tempTask;
+    tasks.map((task) =>
+        task.id === id ? tempTask = task : null
+      )
     const response = await fetchWithAuth(`/api/tasks/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status: newStatus }),
+      body: JSON.stringify({ ...tempTask, status: newStatus }),
     });
-
     if (response.ok) {
       setTasks(
         tasks.map((task) =>
