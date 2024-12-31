@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { fetchWithAuth } from "../utils/api";
-import { Box, Typography, Button } from "@mui/material";
+import { Box, Typography, Button, CircularProgress } from "@mui/material";
 
 const PomodoroTimer = () => {
   const { id } = useParams();
@@ -14,6 +14,7 @@ const PomodoroTimer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(0);
+  const [totalTime, setTotalTime] = useState(WORK_TIME); // Total time for progress calculation
 
   // Auto-start timer when the component is loaded
   useEffect(() => {
@@ -42,6 +43,7 @@ const PomodoroTimer = () => {
   const startTask = async () => {
     try {
       setIsRunning(true);
+      setTotalTime(WORK_TIME); // Set total time for progress bar
       await fetchWithAuth(`/api/tasks/${id}/start`, { method: "PUT" });
     } catch (err) {
       console.error("Failed to start task:", err);
@@ -84,6 +86,7 @@ const PomodoroTimer = () => {
       // End of break, transition to work mode
       setIsBreak(false);
       setTime(WORK_TIME);
+      setTotalTime(WORK_TIME); // Reset total time for progress bar
       await resumeTask(); // Call backend resume API after break
     } else {
       // End of work mode, transition to break
@@ -93,9 +96,11 @@ const PomodoroTimer = () => {
       if (newCount % LONG_BREAK_THRESHOLD === 0) {
         // Long break after 4 Pomodoro cycles
         setTime(LONG_BREAK);
+        setTotalTime(LONG_BREAK); // Update total time for progress bar
       } else {
         // Short break
         setTime(SHORT_BREAK);
+        setTotalTime(SHORT_BREAK); // Update total time for progress bar
       }
 
       setIsBreak(true);
@@ -111,6 +116,10 @@ const PomodoroTimer = () => {
       .padStart(2, "0")}`;
   };
 
+  const calculateProgress = () => {
+    return ((totalTime - time) / totalTime) * 100;
+  };
+
   return (
     <Box sx={{ maxWidth: 600, mx: "auto", mt: 4, textAlign: "center" }}>
       <Typography variant="h4">
@@ -120,9 +129,29 @@ const PomodoroTimer = () => {
             : "Short Break"
           : "Work Time"}
       </Typography>
-      <Typography variant="h2" sx={{ my: 2 }}>
-        {formatTime(time)}
-      </Typography>
+      <Box sx={{ position: "relative", display: "inline-flex", my: 3 }}>
+        <CircularProgress
+          variant="determinate"
+          value={calculateProgress()}
+          size={200}
+          thickness={4}
+          color={isBreak ? "success" : "primary"}
+        />
+        <Box
+          sx={{
+            top: 0,
+            left: 0,
+            bottom: 0,
+            right: 0,
+            position: "absolute",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Typography variant="h2">{formatTime(time)}</Typography>
+        </Box>
+      </Box>
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
         {isBreak ? (
           <>
