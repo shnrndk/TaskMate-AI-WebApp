@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import TaskItem from "./TaskItem";
 import { fetchWithAuth } from "../utils/api";
 import { Paper, Typography, Box } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const TaskList = () => {
   const [tasks, setTasks] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -49,6 +51,18 @@ const TaskList = () => {
     }
   };
 
+  const handleStartTask = async (id) => {
+    const response = await fetchWithAuth(`/api/tasks/${id}/start`, {
+      method: "PUT",
+    });
+
+    if (response.ok) {
+      navigate(`/tasks/${id}/timer`); // Redirect to the Pomodoro Timer page
+    } else {
+      alert("Failed to start the task.");
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
       <Typography variant="h5" align="center" gutterBottom>
@@ -62,6 +76,7 @@ const TaskList = () => {
               task={task}
               onDelete={handleDelete}
               onStatusChange={handleStatusChange}
+              onStartTask={handleStartTask}
             />
           ))
         ) : (

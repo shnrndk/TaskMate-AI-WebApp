@@ -1,9 +1,9 @@
 import React from "react";
-import { MenuItem, Select, IconButton } from "@mui/material";
+import { MenuItem, Select, IconButton, Button } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import "../styles/TaskItem.css";
 
-const TaskItem = ({ task, onDelete, onStatusChange }) => {
+const TaskItem = ({ task, onDelete, onStatusChange, onStartTask }) => {
   const handleStatusChange = (event) => {
     onStatusChange(task.id, event.target.value);
   };
@@ -38,6 +38,13 @@ const TaskItem = ({ task, onDelete, onStatusChange }) => {
           <MenuItem value="Completed">Completed</MenuItem>
         </Select>
       </p>
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => onStartTask(task.id)}
+      >
+        Start Task
+      </Button>
     </div>
   );
 };
