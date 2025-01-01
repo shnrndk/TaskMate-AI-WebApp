@@ -1,20 +1,23 @@
 import React from "react";
-import { MenuItem, Select, IconButton, Button } from "@mui/material";
+import { MenuItem, Select, IconButton } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import "../styles/TaskItem.css";
 
-const TaskItem = ({ task, onDelete, onStatusChange, onStartTask }) => {
+const TaskItem = ({ task, onDelete, onStatusChange, onNavigate }) => {
   const handleStatusChange = (event) => {
     onStatusChange(task.id, event.target.value);
   };
 
   return (
-    <div className="task-item">
+    <div className="task-item" onClick={onNavigate} style={{ cursor: "pointer" }}>
       <div className="task-header">
         <h3>{task.title}</h3>
         <IconButton
           aria-label="delete"
-          onClick={() => onDelete(task.id)}
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent navigation
+            onDelete(task.id);
+          }}
           color="error"
         >
           <DeleteIcon />
@@ -28,7 +31,10 @@ const TaskItem = ({ task, onDelete, onStatusChange, onStartTask }) => {
         <strong>Status:</strong>{" "}
         <Select
           value={task.status}
-          onChange={handleStatusChange}
+          onChange={(e) => {
+            e.stopPropagation(); // Prevent navigation
+            handleStatusChange(e);
+          }}
           displayEmpty
           variant="outlined"
           size="small"
@@ -38,13 +44,6 @@ const TaskItem = ({ task, onDelete, onStatusChange, onStartTask }) => {
           <MenuItem value="Completed">Completed</MenuItem>
         </Select>
       </p>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => onStartTask(task.id)}
-      >
-        Start Task
-      </Button>
     </div>
   );
 };

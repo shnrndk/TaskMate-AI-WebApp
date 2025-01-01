@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import TaskItem from "./TaskItem";
+import SubTaskDrawer from "./SubTaskDrawer";
 import { fetchWithAuth } from "../utils/api";
-import { Paper, Typography, Box } from "@mui/material";
+import { Paper, Typography, Box, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 const TaskList = () => {
   const [tasks, setTasks] = useState([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [currentTask, setCurrentTask] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,9 +39,7 @@ const TaskList = () => {
 
   const handleStatusChange = async (id, newStatus) => {
     let tempTask;
-    tasks.map((task) =>
-        task.id === id ? tempTask = task : null
-      )
+    tasks.map((task) => (task.id === id ? (tempTask = task) : null));
     const response = await fetchWithAuth(`/api/tasks/${id}`, {
       method: "PUT",
       body: JSON.stringify({ ...tempTask, status: newStatus }),
@@ -54,16 +55,14 @@ const TaskList = () => {
     }
   };
 
-  const handleStartTask = async (id) => {
-    const response = await fetchWithAuth(`/api/tasks/${id}/start`, {
-      method: "PUT",
-    });
+  const handleSubTasking = (task) => {
+    setCurrentTask(task);
+    setDrawerOpen(true);
+  };
 
-    if (response.ok) {
-      navigate(`/tasks/${id}/timer`); // Redirect to the Pomodoro Timer page
-    } else {
-      alert("Failed to start the task.");
-    }
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setCurrentTask(null);
   };
 
   return (
@@ -74,18 +73,35 @@ const TaskList = () => {
       <Paper sx={{ p: 2 }}>
         {tasks.length > 0 ? (
           tasks.map((task) => (
-            <TaskItem
+            <Box
               key={task.id}
-              task={task}
-              onDelete={handleDelete}
-              onStatusChange={handleStatusChange}
-              onStartTask={handleStartTask}
-            />
+              sx={{ mb: 2, p: 2, border: "1px solid #ddd", borderRadius: 2 }}
+            >
+              <TaskItem
+                task={task}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+                onNavigate={() => navigate(`/tasks/${task.id}/timer`)}
+              />
+              <Button
+                variant="outlined"
+                color="primary"
+                sx={{ mt: 1 }}
+                onClick={() => handleSubTasking(task)}
+              >
+                Manage Sub-Tasks
+              </Button>
+            </Box>
           ))
         ) : (
           <Typography align="center">No tasks available.</Typography>
         )}
       </Paper>
+      <SubTaskDrawer
+        open={drawerOpen}
+        onClose={closeDrawer}
+        task={currentTask}
+      />
     </Box>
   );
 };

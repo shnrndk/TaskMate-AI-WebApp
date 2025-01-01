@@ -16,10 +16,41 @@ const PomodoroTimer = () => {
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const [totalTime, setTotalTime] = useState(WORK_TIME); // Total time for progress calculation
 
-  // Auto-start timer when the component is loaded
+  // Restore state from localStorage
   useEffect(() => {
-    startTask();
-  }, []);
+    const savedState = localStorage.getItem("pomodoroState");
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      if (state.taskId === id) {
+        setTime(state.time);
+        setIsRunning(state.isRunning);
+        setIsBreak(state.isBreak);
+        setPomodoroCount(state.pomodoroCount);
+        setTotalTime(state.totalTime);
+      }
+    }
+  }, [id]);
+
+  // Save state to localStorage every minute
+  useEffect(() => {
+    const saveState = () => {
+      const state = {
+        taskId: id,
+        time,
+        isRunning,
+        isBreak,
+        pomodoroCount,
+        totalTime,
+      };
+      localStorage.setItem("pomodoroState", JSON.stringify(state));
+    };
+
+    const interval = setInterval(() => {
+      if (isRunning) saveState();
+    }, 60000); // Save every 1 minute
+
+    return () => clearInterval(interval);
+  }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
 
   // Timer logic
   useEffect(() => {
@@ -153,6 +184,14 @@ const PomodoroTimer = () => {
         </Box>
       </Box>
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => startTask()}
+          disabled={isRunning}
+        >
+          Start Task
+        </Button>
         {isBreak ? (
           <>
             <Button
