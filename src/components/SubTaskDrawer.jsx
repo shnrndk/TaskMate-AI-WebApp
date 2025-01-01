@@ -81,9 +81,16 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
   };
 
   const handleStatusChange = async (id, status) => {
+    let tempSubTask;
+    subTasks.map((subTask) => {
+      if (subTask.id === id) {
+        tempSubTask = subTask;
+        tempSubTask.status = status;
+      }
+    });
     const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ ...tempSubTask }),
     });
 
     if (response.ok) {
@@ -131,8 +138,9 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
                     <Box>
                       <Select
                         value={subTask.status}
-                        onChange={(e) =>
+                        onChange={(e) => {
                           handleStatusChange(subTask.id, e.target.value)
+                        }
                         }
                         size="small"
                         sx={{ mt: 1 }}

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import TaskItem from "./TaskItem";
 import SubTaskDrawer from "./SubTaskDrawer";
 import { fetchWithAuth } from "../utils/api";
-import { Paper, Typography, Box, Button } from "@mui/material";
+import { Grid, Typography, Box, Button, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 const TaskList = () => {
@@ -66,37 +66,48 @@ const TaskList = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", mt: 4 }}>
-      <Typography variant="h5" align="center" gutterBottom>
+    <Box sx={{ maxWidth: 1200, mx: "auto", mt: 4, p: 2 }}>
+      <Typography
+        variant="h4"
+        align="center"
+        gutterBottom
+        sx={{ fontWeight: "bold", fontFamily: "'Roboto', sans-serif" }}
+      >
         Your Tasks
       </Typography>
-      <Paper sx={{ p: 2 }}>
-        {tasks.length > 0 ? (
-          tasks.map((task) => (
-            <Box
-              key={task.id}
-              sx={{ mb: 2, p: 2, border: "1px solid #ddd", borderRadius: 2 }}
-            >
-              <TaskItem
-                task={task}
-                onDelete={handleDelete}
-                onStatusChange={handleStatusChange}
-                onNavigate={() => navigate(`/tasks/${task.id}/timer`)}
-              />
-              <Button
-                variant="outlined"
-                color="primary"
-                sx={{ mt: 1 }}
-                onClick={() => handleSubTasking(task)}
+
+      {tasks.length > 0 ? (
+        <Grid container spacing={3}>
+          {tasks.map((task) => (
+            <Grid item xs={12} sm={6} md={4} key={task.id}>
+              <Paper
+                elevation={4}
+                sx={{
+                  borderRadius: 3,
+                  p: 2,
+                  transition: "transform 0.2s ease-in-out",
+                  "&:hover": {
+                    transform: "scale(1.03)",
+                  },
+                }}
               >
-                Manage Sub-Tasks
-              </Button>
-            </Box>
-          ))
-        ) : (
-          <Typography align="center">No tasks available.</Typography>
-        )}
-      </Paper>
+                <TaskItem
+                  task={task}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                  onNavigate={() => navigate(`/tasks/${task.id}/timer`)}
+                  handleSubTasking={() => handleSubTasking(task)}
+                />
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <Typography align="center" variant="h6" sx={{ mt: 4 }}>
+          No tasks available.
+        </Typography>
+      )}
+
       <SubTaskDrawer
         open={drawerOpen}
         onClose={closeDrawer}

@@ -14,7 +14,23 @@ const PomodoroTimer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [pomodoroCount, setPomodoroCount] = useState(0);
-  const [totalTime, setTotalTime] = useState(WORK_TIME); // Total time for progress calculation
+  const [totalTime, setTotalTime] = useState(WORK_TIME);
+  const [isStarted, setIsStarted] = useState(false);
+
+  const checkTaskStatus = async () => {
+    try {
+      const response = await fetchWithAuth(`/api/tasks/${id}/status`);
+      if (response.ok) {
+        const data = await response.json();
+        setIsStarted(data.isStarted);
+        setIsRunning(data.isStarted);
+      } else {
+        console.error("Failed to fetch task status.");
+      }
+    } catch (err) {
+      console.error("Error checking task status:", err);
+    }
+  };
 
   // Restore state from localStorage
   useEffect(() => {
@@ -27,8 +43,14 @@ const PomodoroTimer = () => {
         setIsBreak(state.isBreak);
         setPomodoroCount(state.pomodoroCount);
         setTotalTime(state.totalTime);
+        setIsStarted(true); // If we have saved state, the task was started
       }
     }
+  }, [id]);
+
+  // Check if the task is started
+  useEffect(() => {
+    checkTaskStatus();
   }, [id]);
 
   // Save state to localStorage every minute
@@ -47,7 +69,7 @@ const PomodoroTimer = () => {
 
     const interval = setInterval(() => {
       if (isRunning) saveState();
-    }, 60000); // Save every 1 minute
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
@@ -70,18 +92,17 @@ const PomodoroTimer = () => {
     return () => clearInterval(timer);
   }, [isRunning]);
 
-  // Start task (work period)
   const startTask = async () => {
     try {
       setIsRunning(true);
-      setTotalTime(WORK_TIME); // Set total time for progress bar
+      setIsStarted(true);
+      setTotalTime(WORK_TIME);
       await fetchWithAuth(`/api/tasks/${id}/start`, { method: "PUT" });
     } catch (err) {
       console.error("Failed to start task:", err);
     }
   };
 
-  // Auto-pause when work period ends
   const autoPauseTask = async () => {
     try {
       setIsRunning(false);
@@ -91,7 +112,6 @@ const PomodoroTimer = () => {
     }
   };
 
-  // Resume task (after break ends)
   const resumeTask = async () => {
     try {
       setIsRunning(true);
@@ -101,50 +121,41 @@ const PomodoroTimer = () => {
     }
   };
 
-  // Pause during breaks (UI-only)
   const pauseBreak = () => {
-    setIsRunning(false); // Stop the timer without backend interaction
+    setIsRunning(false);
   };
 
-  // Resume during breaks (UI-only)
   const resumeBreak = () => {
-    setIsRunning(true); // Restart the timer without backend interaction
+    setIsRunning(true);
   };
 
-  // Handle end of timer (work or break)
   const handleTimerEnd = async () => {
     if (isBreak) {
-      // End of break, transition to work mode
       setIsBreak(false);
       setTime(WORK_TIME);
-      setTotalTime(WORK_TIME); // Reset total time for progress bar
-      await resumeTask(); // Call backend resume API after break
+      setTotalTime(WORK_TIME);
+      await resumeTask();
     } else {
-      // End of work mode, transition to break
       const newCount = pomodoroCount + 1;
       setPomodoroCount(newCount);
 
       if (newCount % LONG_BREAK_THRESHOLD === 0) {
-        // Long break after 4 Pomodoro cycles
         setTime(LONG_BREAK);
-        setTotalTime(LONG_BREAK); // Update total time for progress bar
+        setTotalTime(LONG_BREAK);
       } else {
-        // Short break
         setTime(SHORT_BREAK);
-        setTotalTime(SHORT_BREAK); // Update total time for progress bar
+        setTotalTime(SHORT_BREAK);
       }
 
       setIsBreak(true);
-      await autoPauseTask(); // Call backend auto-pause API at end of work
+      await autoPauseTask();
     }
   };
 
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   const calculateProgress = () => {
@@ -184,34 +195,17 @@ const PomodoroTimer = () => {
         </Box>
       </Box>
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => startTask()}
-          disabled={isRunning}
-        >
-          Start Task
-        </Button>
-        {isBreak ? (
-          <>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={pauseBreak}
-              disabled={!isRunning}
-            >
-              Pause Break
-            </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={resumeBreak}
-              disabled={isRunning}
-            >
-              Resume Break
-            </Button>
-          </>
-        ) : (
+        {!isStarted && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={startTask}
+            disabled={isRunning}
+          >
+            Start Task
+          </Button>
+        )}
+        {isStarted && !isBreak && (
           <>
             <Button
               variant="contained"
@@ -228,6 +222,26 @@ const PomodoroTimer = () => {
               disabled={isRunning}
             >
               Resume Work
+            </Button>
+          </>
+        )}
+        {isStarted && isBreak && (
+          <>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={pauseBreak}
+              disabled={!isRunning}
+            >
+              Pause Break
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={resumeBreak}
+              disabled={isRunning}
+            >
+              Resume Break
             </Button>
           </>
         )}
