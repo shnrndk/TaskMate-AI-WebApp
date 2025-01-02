@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { fetchWithAuth } from "../utils/api";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  CircularProgress,
+  Paper,
+} from "@mui/material";
 
 const PomodoroTimer = () => {
   const { id } = useParams();
-  const WORK_TIME = 25 * 60; // 25 minutes in seconds
-  const SHORT_BREAK = 5 * 60; // 5 minutes in seconds
-  const LONG_BREAK = 15 * 60; // 15 minutes in seconds
-  const LONG_BREAK_THRESHOLD = 4; // Long break after 4 Pomodoro cycles
+  const WORK_TIME = 25 * 60;
+  const SHORT_BREAK = 5 * 60;
+  const LONG_BREAK = 15 * 60;
+  const LONG_BREAK_THRESHOLD = 4;
 
   const [time, setTime] = useState(WORK_TIME);
   const [isRunning, setIsRunning] = useState(false);
@@ -32,7 +38,6 @@ const PomodoroTimer = () => {
     }
   };
 
-  // Restore state from localStorage
   useEffect(() => {
     const savedState = localStorage.getItem("pomodoroState");
     if (savedState) {
@@ -43,17 +48,15 @@ const PomodoroTimer = () => {
         setIsBreak(state.isBreak);
         setPomodoroCount(state.pomodoroCount);
         setTotalTime(state.totalTime);
-        setIsStarted(true); // If we have saved state, the task was started
+        setIsStarted(true);
       }
     }
   }, [id]);
 
-  // Check if the task is started
   useEffect(() => {
     checkTaskStatus();
   }, [id]);
 
-  // Save state to localStorage every minute
   useEffect(() => {
     const saveState = () => {
       const state = {
@@ -74,7 +77,6 @@ const PomodoroTimer = () => {
     return () => clearInterval(interval);
   }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
 
-  // Timer logic
   useEffect(() => {
     let timer;
     if (isRunning) {
@@ -163,35 +165,54 @@ const PomodoroTimer = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 600, mx: "auto", mt: 4, textAlign: "center" }}>
-      <Typography variant="h4">
+    <Paper
+      elevation={6}
+      sx={{
+        maxWidth: 600,
+        mx: "auto",
+        mt: 4,
+        p: 4,
+        textAlign: "center",
+        borderRadius: 4,
+        backgroundColor: isBreak ? "#f3f4f6" : "#fff",
+      }}
+    >
+      <Typography variant="h4" sx={{ mb: 2, fontWeight: "bold" }}>
         {isBreak
           ? pomodoroCount % LONG_BREAK_THRESHOLD === 0
             ? "Long Break"
             : "Short Break"
           : "Work Time"}
       </Typography>
-      <Box sx={{ position: "relative", display: "inline-flex", my: 3 }}>
-        <CircularProgress
-          variant="determinate"
-          value={calculateProgress()}
-          size={200}
-          thickness={4}
-          color={isBreak ? "success" : "primary"}
-        />
-        <Box
-          sx={{
-            top: 0,
-            left: 0,
-            bottom: 0,
-            right: 0,
-            position: "absolute",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Typography variant="h2">{formatTime(time)}</Typography>
+      <Box sx={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", my: 3 }}>
+        <Box sx={{ position: "relative", width: 200, height: 200 }}>
+          <CircularProgress
+            variant="determinate"
+            value={calculateProgress()}
+            size={200}
+            thickness={6}
+            color={isBreak ? "success" : "primary"}
+            sx={{ position: "absolute", left: 0, animation: "progress 1s ease-in-out" }}
+          />
+          <Box
+            sx={{
+              top: 0,
+              left: 0,
+              bottom: 0,
+              right: 0,
+              position: "absolute",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Typography
+              variant="h2"
+              sx={{ fontWeight: "bold", color: isBreak ? "#2e7d32" : "#1976d2" }}
+            >
+              {formatTime(time)}
+            </Typography>
+          </Box>
         </Box>
       </Box>
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
@@ -201,6 +222,7 @@ const PomodoroTimer = () => {
             color="primary"
             onClick={startTask}
             disabled={isRunning}
+            sx={{ px: 4, py: 1 }}
           >
             Start Task
           </Button>
@@ -212,6 +234,7 @@ const PomodoroTimer = () => {
               color="secondary"
               onClick={autoPauseTask}
               disabled={!isRunning}
+              sx={{ px: 4, py: 1 }}
             >
               Pause Work
             </Button>
@@ -220,6 +243,7 @@ const PomodoroTimer = () => {
               color="primary"
               onClick={resumeTask}
               disabled={isRunning}
+              sx={{ px: 4, py: 1 }}
             >
               Resume Work
             </Button>
@@ -232,6 +256,7 @@ const PomodoroTimer = () => {
               color="secondary"
               onClick={pauseBreak}
               disabled={!isRunning}
+              sx={{ px: 4, py: 1 }}
             >
               Pause Break
             </Button>
@@ -240,16 +265,20 @@ const PomodoroTimer = () => {
               color="primary"
               onClick={resumeBreak}
               disabled={isRunning}
+              sx={{ px: 4, py: 1 }}
             >
               Resume Break
             </Button>
           </>
         )}
       </Box>
-      <Typography variant="body1" sx={{ mt: 2 }}>
-        Pomodoro Cycles Completed: {pomodoroCount}
+      <Typography variant="body1" sx={{ mt: 3, color: "#757575" }}>
+        Pomodoro Cycles Completed:{" "}
+        <Typography component="span" color="primary" fontWeight="bold">
+          {pomodoroCount}
+        </Typography>
       </Typography>
-    </Box>
+    </Paper>
   );
 };
 
