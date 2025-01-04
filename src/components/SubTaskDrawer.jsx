@@ -16,9 +16,11 @@ import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { fetchWithAuth } from "../utils/api";
+import { useNavigate } from "react-router-dom";
 
 const SubTaskDrawer = ({ open, onClose, task }) => {
   const [subTasks, setSubTasks] = useState([]);
+  const navigate = useNavigate();
   const [newSubTask, setNewSubTask] = useState({
     title: "",
     priority: "Medium",
@@ -69,15 +71,7 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
   };
 
   const handleStartSubTask = async (id) => {
-    const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}/start`, {
-      method: "PUT",
-    });
-
-    if (response.ok) {
-      fetchSubTasks();
-    } else {
-      alert("Failed to start sub-task.");
-    }
+    navigate(`/sub-tasks/${id}/timer`)
   };
 
   const handleStatusChange = async (id, status) => {

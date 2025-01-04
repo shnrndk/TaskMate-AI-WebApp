@@ -9,7 +9,7 @@ import {
   Paper,
 } from "@mui/material";
 
-const PomodoroTimer = () => {
+const PomodoroTimerForSubTasks = () => {
   const { id } = useParams();
   const WORK_TIME = 25 * 60;
   const SHORT_BREAK = 5 * 60;
@@ -25,7 +25,7 @@ const PomodoroTimer = () => {
 
   const checkTaskStatus = async () => {
     try {
-      const response = await fetchWithAuth(`/api/tasks/${id}/status`);
+      const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}/status`);
       if (response.ok) {
         const data = await response.json();
         setIsStarted(data.isStarted);
@@ -96,7 +96,7 @@ const PomodoroTimer = () => {
 
   const startTask = async () => {
     try {
-      await fetchWithAuth(`/api/tasks/${id}/start`, { method: "PUT" });
+      await fetchWithAuth(`/api/tasks/sub-tasks/${id}/start`, { method: "PUT" });
       setIsRunning(true);
       setIsStarted(true);
       setTotalTime(WORK_TIME);
@@ -107,7 +107,7 @@ const PomodoroTimer = () => {
 
   const autoPauseTask = async () => {
     try {
-      await fetchWithAuth(`/api/tasks/${id}/pause`, { method: "PUT" });
+      await fetchWithAuth(`/api/tasks/sub-tasks/${id}/pause`, { method: "PUT" });
       setIsRunning(false);
     } catch (err) {
       console.error("Failed to auto-pause task:", err);
@@ -116,7 +116,7 @@ const PomodoroTimer = () => {
 
   const resumeTask = async () => {
     try {
-      await fetchWithAuth(`/api/tasks/${id}/resume`, { method: "PUT" });
+      await fetchWithAuth(`/api/tasks/sub-tasks/${id}/resume`, { method: "PUT" });
       setIsRunning(true);
     } catch (err) {
       console.error("Failed to resume task:", err);
@@ -282,4 +282,4 @@ const PomodoroTimer = () => {
   );
 };
 
-export default PomodoroTimer;
+export default PomodoroTimerForSubTasks;
