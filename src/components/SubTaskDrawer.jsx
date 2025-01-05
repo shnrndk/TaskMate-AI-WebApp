@@ -59,7 +59,7 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
   };
 
   const handleDeleteSubTask = async (id) => {
-    const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}`, {
+    const response = await fetchWithAuth(`/api/tasks/${task.id}/sub-tasks/${id}`, {
       method: "DELETE",
     });
 

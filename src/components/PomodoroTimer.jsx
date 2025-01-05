@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchWithAuth } from "../utils/api";
 import {
   Box,
@@ -22,6 +22,7 @@ const PomodoroTimer = () => {
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [isStarted, setIsStarted] = useState(false);
+  const navigate = useNavigate();
 
   const checkTaskStatus = async () => {
     try {
@@ -120,6 +121,16 @@ const PomodoroTimer = () => {
       setIsRunning(true);
     } catch (err) {
       console.error("Failed to resume task:", err);
+    }
+  };
+
+  const finishTask = async () => {
+    try {
+      await fetchWithAuth(`/api/tasks/${id}/finish`, { method: "PUT" });
+      setIsRunning(false);
+      navigate("/");
+    } catch (err) {
+      console.error("Failed to finish task:", err);
     }
   };
 
@@ -248,6 +259,17 @@ const PomodoroTimer = () => {
               Resume Work
             </Button>
           </>
+        )}
+        {isStarted && (
+          <Button
+          variant="contained"
+          color="primary"
+          onClick={finishTask}
+          disabled={isRunning}
+          sx={{ px: 4, py: 1 }}
+        >
+          Finish Task
+        </Button>
         )}
         {isStarted && isBreak && (
           <>

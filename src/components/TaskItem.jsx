@@ -9,6 +9,10 @@ const TaskItem = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
     onStatusChange(task.id, event.target.value);
   };
 
+  const handleOnDelete = () => {
+    onDelete(task.id);
+  }
+
   return (
     <Card sx={{ borderRadius: 3, boxShadow: 4, margin: 2, maxWidth: 400 }}>
       <CardContent>
@@ -17,6 +21,7 @@ const TaskItem = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
             {task.title}
           </Typography>
           <Box>
+          {task.subtasks_count === 0 && (
             <Button
               variant="contained"
               color="primary"
@@ -27,7 +32,8 @@ const TaskItem = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
             >
               Timer
             </Button>
-            <IconButton aria-label="delete" onClick={onDelete} color="error">
+          )}
+            <IconButton aria-label="delete" onClick={handleOnDelete} color="error">
               <DeleteIcon />
             </IconButton>
           </Box>
