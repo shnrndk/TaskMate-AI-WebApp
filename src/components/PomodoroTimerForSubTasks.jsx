@@ -23,7 +23,7 @@ const PomodoroTimerForSubTasks = () => {
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [isStarted, setIsStarted] = useState(false);
   const Navigate = useNavigate();
-  
+
   const checkTaskStatus = async () => {
     try {
       const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}/status`);
@@ -126,7 +126,7 @@ const PomodoroTimerForSubTasks = () => {
 
     const finishTask = async () => {
         try {
-            await fetchWithAuth(`/api/tasks/${id}/finish`, { method: "PUT" });
+            await fetchWithAuth(`/api/tasks/sub-tasks/${id}/finish`, { method: "PUT" });
             setIsRunning(false);
             Navigate("/");
         } catch (err) {
