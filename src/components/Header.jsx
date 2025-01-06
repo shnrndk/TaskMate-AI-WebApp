@@ -1,9 +1,17 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Button } from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, IconButton, Box } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
+import HomeIcon from "@mui/icons-material/Home";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import LoginIcon from "@mui/icons-material/Login";
+import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import LogoutIcon from "@mui/icons-material/Logout";
 
 const Header = () => {
   const navigate = useNavigate();
+
+  // Check if the user is signed in by checking for a token
+  const isSignedIn = !!localStorage.getItem("token");
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -11,23 +19,73 @@ const Header = () => {
   };
 
   return (
-    <AppBar position="static" color="primary">
+    <AppBar position="static" sx={{ backgroundColor: "#3f51b5" }}>
       <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          TaskMate
+        {/* App Title */}
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ flexGrow: 1, fontWeight: "bold", display: "flex", alignItems: "center" }}
+        >
+          <Box sx={{ mr: 1 }}>📝</Box> TaskMate
         </Typography>
-        <Button color="inherit" component={Link} to="/">
-          Home
-        </Button>
-        <Button color="inherit" component={Link} to="/login">
-          Login
-        </Button>
-        <Button color="inherit" component={Link} to="/register">
-          Register
-        </Button>
-        <Button color="inherit" onClick={handleLogout}>
-          Logout
-        </Button>
+
+        {/* Navigation Buttons */}
+
+
+        {isSignedIn ? (
+          <>
+            <Button
+              color="inherit"
+              component={Link}
+              to="/"
+              startIcon={<HomeIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Home
+            </Button>
+
+            <Button
+              color="inherit"
+              component={Link}
+              to="/stats"
+              startIcon={<BarChartIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Stats
+            </Button>
+            <Button
+              color="inherit"
+              onClick={handleLogout}
+              startIcon={<LogoutIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Logout
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              color="inherit"
+              component={Link}
+              to="/login"
+              startIcon={<LoginIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Login
+            </Button>
+
+            <Button
+              color="inherit"
+              component={Link}
+              to="/register"
+              startIcon={<PersonAddIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Register
+            </Button>
+          </>
+        )}
       </Toolbar>
     </AppBar>
   );
