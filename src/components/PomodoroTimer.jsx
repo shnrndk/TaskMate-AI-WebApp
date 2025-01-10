@@ -22,77 +22,71 @@ const PomodoroTimer = () => {
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [isStarted, setIsStarted] = useState(false);
+  const [lastTimestamp, setLastTimestamp] = useState(null);
   const navigate = useNavigate();
 
-  const checkTaskStatus = async () => {
-    try {
-      const response = await fetchWithAuth(`/api/tasks/${id}/status`);
-      if (response.ok) {
-        const data = await response.json();
-        setIsStarted(data.isStarted);
-        setIsRunning(data.isStarted);
+  // Add visibility change handler
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab becomes hidden - store the current timestamp
+        setLastTimestamp(Date.now());
       } else {
-        console.error("Failed to fetch task status.");
+        // Tab becomes visible - calculate elapsed time and update timer
+        if (lastTimestamp && isRunning) {
+          const elapsedSeconds = Math.floor((Date.now() - lastTimestamp) / 1000);
+          setTime(prevTime => {
+            const newTime = Math.max(0, prevTime - elapsedSeconds);
+            if (newTime === 0) {
+              handleTimerEnd();
+            }
+            return newTime;
+          });
+        }
+        setLastTimestamp(null);
       }
-    } catch (err) {
-      console.error("Error checking task status:", err);
-    }
-  };
-
-  useEffect(() => {
-    const savedState = localStorage.getItem("pomodoroState");
-    if (savedState) {
-      const state = JSON.parse(savedState);
-      if (state.taskId === id) {
-        setTime(state.time);
-        setIsRunning(state.isRunning);
-        setIsBreak(state.isBreak);
-        setPomodoroCount(state.pomodoroCount);
-        setTotalTime(state.totalTime);
-        setIsStarted(true);
-      }
-    }
-  }, [id]);
-
-  useEffect(() => {
-    checkTaskStatus();
-  }, [id]);
-
-  useEffect(() => {
-    const saveState = () => {
-      const state = {
-        taskId: id,
-        time,
-        isRunning,
-        isBreak,
-        pomodoroCount,
-        totalTime,
-      };
-      localStorage.setItem("pomodoroState", JSON.stringify(state));
     };
 
-    const interval = setInterval(() => {
-      if (isRunning) saveState();
-    }, 60000);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [lastTimestamp, isRunning]);
 
-    return () => clearInterval(interval);
-  }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
-
+  // Modified timer effect to use requestAnimationFrame
   useEffect(() => {
-    let timer;
+    let animationFrameId;
+    let lastTick = Date.now();
+
+    const tick = () => {
+      if (isRunning) {
+        const now = Date.now();
+        const delta = Math.floor((now - lastTick) / 1000);
+
+        if (delta >= 1) {
+          setTime(prevTime => {
+            if (prevTime > 0) {
+              return Math.max(0, prevTime - delta);
+            } else {
+              handleTimerEnd();
+              return 0;
+            }
+          });
+          lastTick = now;
+        }
+
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
     if (isRunning) {
-      timer = setInterval(() => {
-        setTime((prevTime) => {
-          if (prevTime > 0) {
-            return prevTime - 1;
-          } else {
-            handleTimerEnd();
-            return 0;
-          }
-        });
-      }, 1000);
+      lastTick = Date.now();
+      animationFrameId = requestAnimationFrame(tick);
     }
-    return () => clearInterval(timer);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [isRunning]);
 
   const startTask = async () => {
