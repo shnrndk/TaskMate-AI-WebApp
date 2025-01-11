@@ -22,7 +22,32 @@ const PomodoroTimerForSubTasks = () => {
   const [pomodoroCount, setPomodoroCount] = useState(0);
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [isStarted, setIsStarted] = useState(false);
+  const [lastTimestamp, setLastTimestamp] = useState(null);
   const Navigate = useNavigate();
+
+  // Handle visibility change for background tab timing
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setLastTimestamp(Date.now());
+      } else {
+        if (lastTimestamp && isRunning) {
+          const elapsedSeconds = Math.floor((Date.now() - lastTimestamp) / 1000);
+          setTime(prevTime => {
+            const newTime = Math.max(0, prevTime - elapsedSeconds);
+            if (newTime === 0) {
+              handleTimerEnd();
+            }
+            return newTime;
+          });
+        }
+        setLastTimestamp(null);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [lastTimestamp, isRunning]);
 
   const checkTaskStatus = async () => {
     try {
@@ -39,6 +64,7 @@ const PomodoroTimerForSubTasks = () => {
     }
   };
 
+  // Load saved state
   useEffect(() => {
     const savedState = localStorage.getItem("pomodoroState");
     if (savedState) {
@@ -58,6 +84,7 @@ const PomodoroTimerForSubTasks = () => {
     checkTaskStatus();
   }, [id]);
 
+  // Save state periodically
   useEffect(() => {
     const saveState = () => {
       const state = {
@@ -71,6 +98,10 @@ const PomodoroTimerForSubTasks = () => {
       localStorage.setItem("pomodoroState", JSON.stringify(state));
     };
 
+    if (isRunning) {
+      saveState();
+    }
+
     const interval = setInterval(() => {
       if (isRunning) saveState();
     }, 60000);
@@ -78,21 +109,41 @@ const PomodoroTimerForSubTasks = () => {
     return () => clearInterval(interval);
   }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
 
+  // Main timer logic using requestAnimationFrame
   useEffect(() => {
-    let timer;
+    let animationFrameId;
+    let lastTick = Date.now();
+
+    const tick = () => {
+      if (isRunning) {
+        const now = Date.now();
+        const delta = Math.floor((now - lastTick) / 1000);
+
+        if (delta >= 1) {
+          setTime(prevTime => {
+            const newTime = Math.max(0, prevTime - delta);
+            if (newTime === 0) {
+              handleTimerEnd();
+            }
+            return newTime;
+          });
+          lastTick = now;
+        }
+
+        animationFrameId = requestAnimationFrame(tick);
+      }
+    };
+
     if (isRunning) {
-      timer = setInterval(() => {
-        setTime((prevTime) => {
-          if (prevTime > 0) {
-            return prevTime - 1;
-          } else {
-            handleTimerEnd();
-            return 0;
-          }
-        });
-      }, 1000);
+      lastTick = Date.now();
+      animationFrameId = requestAnimationFrame(tick);
     }
-    return () => clearInterval(timer);
+
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
   }, [isRunning]);
 
   const startTask = async () => {
@@ -101,6 +152,8 @@ const PomodoroTimerForSubTasks = () => {
       setIsRunning(true);
       setIsStarted(true);
       setTotalTime(WORK_TIME);
+      setTime(WORK_TIME);
+      setIsBreak(false);
     } catch (err) {
       console.error("Failed to start task:", err);
     }
@@ -117,22 +170,27 @@ const PomodoroTimerForSubTasks = () => {
 
   const resumeTask = async () => {
     try {
-      await fetchWithAuth(`/api/tasks/sub-tasks/${id}/resume`, { method: "PUT" });
-      setIsRunning(true);
+      if (isBreak) {
+        setIsRunning(true);
+      } else {
+        await fetchWithAuth(`/api/tasks/sub-tasks/${id}/resume`, { method: "PUT" });
+        setIsRunning(true);
+      }
     } catch (err) {
       console.error("Failed to resume task:", err);
     }
   };
 
-    const finishTask = async () => {
-        try {
-            await fetchWithAuth(`/api/tasks/sub-tasks/${id}/finish`, { method: "PUT" });
-            setIsRunning(false);
-            Navigate("/");
-        } catch (err) {
-            console.error("Failed to finish task:", err);
-        }
-    };
+  const finishTask = async () => {
+    try {
+      await fetchWithAuth(`/api/tasks/sub-tasks/${id}/finish`, { method: "PUT" });
+      setIsRunning(false);
+      localStorage.removeItem("pomodoroState"); // Clear saved state when finishing
+      Navigate("/");
+    } catch (err) {
+      console.error("Failed to finish task:", err);
+    }
+  };
 
   const pauseBreak = () => {
     setIsRunning(false);
@@ -143,24 +201,25 @@ const PomodoroTimerForSubTasks = () => {
   };
 
   const handleTimerEnd = async () => {
+    setIsRunning(false); // Ensure timer stops immediately
+
     if (isBreak) {
+      // End of break period
       setIsBreak(false);
       setTime(WORK_TIME);
       setTotalTime(WORK_TIME);
       await resumeTask();
     } else {
+      // End of work period
       const newCount = pomodoroCount + 1;
       setPomodoroCount(newCount);
-
-      if (newCount % LONG_BREAK_THRESHOLD === 0) {
-        setTime(LONG_BREAK);
-        setTotalTime(LONG_BREAK);
-      } else {
-        setTime(SHORT_BREAK);
-        setTotalTime(SHORT_BREAK);
-      }
-
+      
+      // Determine break duration
+      const breakDuration = newCount % LONG_BREAK_THRESHOLD === 0 ? LONG_BREAK : SHORT_BREAK;
+      setTime(breakDuration);
+      setTotalTime(breakDuration);
       setIsBreak(true);
+      
       await autoPauseTask();
     }
   };
@@ -174,6 +233,7 @@ const PomodoroTimerForSubTasks = () => {
   const calculateProgress = () => {
     return ((totalTime - time) / totalTime) * 100;
   };
+
 
   return (
     <Paper
