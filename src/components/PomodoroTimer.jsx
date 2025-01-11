@@ -34,30 +34,61 @@ const PomodoroTimer = () => {
   useEffect(() => {
     checkTaskStatus();
     
-    // Load saved state from localStorage
     const savedState = localStorage.getItem("pomodoroState");
     if (savedState) {
-      const { count, isBreakSaved, lastEndTime } = JSON.parse(savedState);
-      setPomodoroCount(count);
-      setIsBreak(isBreakSaved);
-      if (lastEndTime) {
-        setEndTime(lastEndTime);
-        setTotalTime(isBreakSaved ? 
-          (count % LONG_BREAK_THRESHOLD === 0 ? LONG_BREAK : SHORT_BREAK) : 
-          WORK_TIME
-        );
+      const parsedState = JSON.parse(savedState);
+      
+      // Only restore state if it belongs to the current task
+      if (parsedState.taskId === id) {
+        const {
+          count,
+          isBreakSaved,
+          lastEndTime,
+          lastUpdated,
+          isStartedSaved,
+          totalTimeValue
+        } = parsedState;
+
+        // Check if the saved state is still valid (not too old)
+        const stateAge = Date.now() - lastUpdated;
+        if (stateAge < 24 * 60 * 60 * 1000) { // 24 hours
+          setPomodoroCount(count);
+          setIsBreak(isBreakSaved);
+          setIsStarted(isStartedSaved);
+          setTotalTime(totalTimeValue);
+          
+          if (lastEndTime > Date.now()) {
+            setEndTime(lastEndTime);
+          } else {
+            // If the end time has passed, set up for the next interval
+            const newEndTime = Date.now() + totalTimeValue;
+            setEndTime(newEndTime);
+          }
+        } else {
+          // Clear expired state
+          localStorage.removeItem("pomodoroState");
+        }
       }
     }
-  }, []);
+  }, [id]);
 
   // Save state on changes
   useEffect(() => {
     localStorage.setItem("pomodoroState", JSON.stringify({
+      taskId: id,
       count: pomodoroCount,
       isBreakSaved: isBreak,
-      lastEndTime: endTime
+      lastEndTime: endTime,
+      lastUpdated: Date.now(),
+      isStartedSaved: isStarted,
+      totalTimeValue: totalTime,
+      currentPhase: isBreak ? 'break' : 'work',
+      longBreakThreshold: LONG_BREAK_THRESHOLD,
+      workDuration: WORK_TIME,
+      shortBreakDuration: SHORT_BREAK,
+      longBreakDuration: LONG_BREAK
     }));
-  }, [pomodoroCount, isBreak, endTime]);
+  }, [pomodoroCount, isBreak, endTime, isStarted, totalTime, id]);
 
   const checkTaskStatus = async () => {
     try {
