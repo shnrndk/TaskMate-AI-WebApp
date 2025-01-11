@@ -1,87 +1,127 @@
-import React from "react";
-import { MenuItem, Select, IconButton, Button, Card, CardContent, CardActions, Typography, Box, Grid } from "@mui/material";
-import DeleteIcon from "@mui/icons-material/Delete";
-import TimerIcon from "@mui/icons-material/Timer";
-import "../styles/TaskItem.css"; // Use this for any additional custom styling
+import React, { useState } from 'react';
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  FormControl,
+  Select,
+  MenuItem,
+  Collapse,
+} from '@mui/material';
+import TimerIcon from '@mui/icons-material/Timer';
+import DeleteIcon from '@mui/icons-material/Delete';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
-const TaskItem = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking }) => {
-  const handleStatusChange = (event) => {
-    onStatusChange(task.id, event.target.value);
+const TaskCard = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const handleCardClick = () => {
+    setIsExpanded(!isExpanded);
   };
 
-  const handleOnDelete = () => {
-    onDelete(task.id);
-  }
+  const handleButtonClick = (e, callback) => {
+    e.stopPropagation(); // Prevent card expansion when clicking buttons
+    callback();
+  };
 
   return (
-    <Card sx={{ borderRadius: 3, boxShadow: 4, margin: 2, maxWidth: 400 }}>
-      <CardContent>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h5" sx={{ fontWeight: "bold", fontFamily: "'Roboto', sans-serif" }}>
+    <Box 
+      onClick={handleCardClick}
+      sx={{ 
+        backgroundColor: "white",
+        borderRadius: 2,
+        mb: 2,
+        p: 2,
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        border: "1px solid rgba(0,0,0,0.12)",
+        cursor: "pointer",
+        transition: "all 0.2s ease",
+        '&:hover': {
+          boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+        }
+      }}
+    >
+      {/* Header - Always Visible */}
+      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography sx={{ fontSize: "1.25rem", fontWeight: "500" }}>
             {task.title}
           </Typography>
-          <Box>
-          {task.subtasks_count === 0 && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<TimerIcon />}
-              onClick={onNavigate}
-              size="small"
-              sx={{ marginRight: 1 }}
-            >
-              Timer
-            </Button>
-          )}
-            <IconButton aria-label="delete" onClick={handleOnDelete} color="error">
-              <DeleteIcon />
-            </IconButton>
-          </Box>
+          {isExpanded ? 
+            <KeyboardArrowUpIcon color="action" /> : 
+            <KeyboardArrowDownIcon color="action" />
+          }
         </Box>
-        <Box sx={{ marginTop: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Description:</strong> {task.description}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Category:</strong> {task.category}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Priority:</strong> {task.priority}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Duration:</strong> {task.duration} minutes
-          </Typography>
-        </Box>
-        <Box sx={{ marginTop: 2 }}>
-          <Typography variant="body2" color="text.secondary">
-            <strong>Status:</strong>
-          </Typography>
-          <Select
-            value={task.status}
-            onChange={handleStatusChange}
-            displayEmpty
-            variant="outlined"
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<TimerIcon />}
+            onClick={(e) => handleButtonClick(e, () => onNavigate(task.id))}
             size="small"
-            sx={{ width: "100%", marginTop: 1 }}
           >
-            <MenuItem value="Pending">Pending</MenuItem>
-            <MenuItem value="In Progress">In Progress</MenuItem>
-            <MenuItem value="Completed">Completed</MenuItem>
-          </Select>
+            TIMER
+          </Button>
+          <IconButton 
+            size="small" 
+            onClick={(e) => handleButtonClick(e, () => onDelete(task.id))}
+            sx={{ color: "#ef5350" }}
+          >
+            <DeleteIcon />
+          </IconButton>
         </Box>
-      </CardContent>
-      <CardActions>
-        <Button
-          variant="outlined"
-          color="primary"
-          fullWidth
-          onClick={() => handleSubTasking(task)}
-        >
-          Manage Sub-Tasks
-        </Button>
-      </CardActions>
-    </Card>
+      </Box>
+
+      {/* Basic Info - Always Visible */}
+      <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", mb: isExpanded ? 2 : 0 }}>
+        {task.category} • {task.priority} • {task.duration}min
+      </Typography>
+      
+      {/* Expandable Content */}
+      <Collapse in={isExpanded}>
+        <Box sx={{ mt: 2 }}>
+          <Typography sx={{ color: "text.secondary", mb: 2 }}>
+            {task.description}
+          </Typography>
+          
+          <Box sx={{ mb: 2 }}>
+            <FormControl fullWidth onClick={(e) => e.stopPropagation()}>
+              <Select
+                value={task.status}
+                onChange={(e) => onStatusChange(task.id, e.target.value)}
+                size="small"
+                sx={{
+                  fontSize: '14px',
+                  '& .MuiSelect-select': {
+                    padding: '8px'
+                  }
+                }}
+              >
+                <MenuItem value="PENDING">PENDING</MenuItem>
+                <MenuItem value="IN_PROGRESS">IN_PROGRESS</MenuItem>
+                <MenuItem value="COMPLETED">COMPLETED</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          <Button
+            fullWidth
+            variant="outlined"
+            color="primary"
+            onClick={(e) => handleButtonClick(e, () => handleSubTasking(task))}
+            sx={{ 
+              textTransform: "none",
+              fontWeight: "normal"
+            }}
+          >
+            MANAGE SUB-TASKS
+          </Button>
+        </Box>
+      </Collapse>
+    </Box>
   );
 };
 
-export default TaskItem;
+export default TaskCard;
