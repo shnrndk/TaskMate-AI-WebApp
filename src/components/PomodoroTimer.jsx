@@ -14,9 +14,9 @@ const PomodoroTimer = () => {
   const navigate = useNavigate();
   
   // Constants
-  const WORK_TIME = 25 * 60/60 * 1000; // Convert to milliseconds
-  const SHORT_BREAK = 5 * 60/60 * 1000;
-  const LONG_BREAK = 15 * 60/60 * 1000;
+  const WORK_TIME = 25 * 60 * 1000; // Convert to milliseconds
+  const SHORT_BREAK = 5 * 60 * 1000;
+  const LONG_BREAK = 15 * 60 * 1000;
   const LONG_BREAK_THRESHOLD = 4;
 
   // State
@@ -29,6 +29,56 @@ const PomodoroTimer = () => {
   const [key, setKey] = useState(0); // Add key for forcing Countdown remount
   
   const countdownRef = useRef();
+
+  // Add refs for audio elements
+  const workCompleteSound = useRef(new Audio("/sounds/work-complete.mp3"));
+  const breakCompleteSound = useRef(new Audio("/sounds/break-complete.mp3"));
+
+  // Add state for sound muting
+  const [isMuted, setIsMuted] = useState(false);
+
+  // Initialize audio settings
+  useEffect(() => {
+    // Load the saved mute preference
+    const muteSetting = localStorage.getItem("pomodoroMuted");
+    setIsMuted(muteSetting === "true");
+
+    // Configure audio
+    workCompleteSound.current.preload = "auto";
+    breakCompleteSound.current.preload = "auto";
+
+    return () => {
+      // Cleanup audio resources
+      workCompleteSound.current.pause();
+      breakCompleteSound.current.pause();
+      workCompleteSound.current = null;
+      breakCompleteSound.current = null;
+    };
+  }, []);
+
+
+    // Update audio mute states when isMuted changes
+    useEffect(() => {
+      workCompleteSound.current.muted = isMuted;
+      breakCompleteSound.current.muted = isMuted;
+      localStorage.setItem("pomodoroMuted", isMuted);
+    }, [isMuted]);
+
+    const playSound = async (isBreakTime) => {
+      try {
+        const sound = isBreakTime ? workCompleteSound.current : breakCompleteSound.current;
+        
+        // Reset the audio to the beginning
+        sound.currentTime = 0;
+        
+        // Play the sound
+        await sound.play().catch(error => {
+          console.error("Error playing sound:", error);
+        });
+      } catch (error) {
+        console.error("Error with sound playback:", error);
+      }
+    };
 
   // Load initial state
   useEffect(() => {
@@ -163,6 +213,7 @@ const PomodoroTimer = () => {
     
     if (isBreak) {
       // Switch to work period
+      await playSound(true);
       setIsBreak(false);
       const newEndTime = Date.now() + WORK_TIME;
       setEndTime(newEndTime);
@@ -171,6 +222,7 @@ const PomodoroTimer = () => {
       await resumeTimer(false);
     } else {
       // Switch to break period
+      await playSound(false);
       const newCount = pomodoroCount + 1;
       setPomodoroCount(newCount);
       
@@ -321,6 +373,16 @@ const PomodoroTimer = () => {
           {pomodoroCount}
         </Typography>
       </Typography>
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 2, mb: 2 }}>
+        <Button
+          variant="outlined"
+          color={isMuted ? "error" : "primary"}
+          onClick={() => setIsMuted(!isMuted)}
+          sx={{ minWidth: 40, width: 40, height: 40, p: 0 }}
+        >
+          {isMuted ? "🔇" : "🔊"}
+        </Button>
+      </Box>
     </Paper>
   );
 };

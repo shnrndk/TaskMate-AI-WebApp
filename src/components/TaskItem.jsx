@@ -99,9 +99,9 @@ const TaskCard = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
                   }
                 }}
               >
-                <MenuItem value="PENDING">PENDING</MenuItem>
-                <MenuItem value="IN_PROGRESS">IN_PROGRESS</MenuItem>
-                <MenuItem value="COMPLETED">COMPLETED</MenuItem>
+                <MenuItem value="Pending">Pending</MenuItem>
+                <MenuItem value="In Progress">In Progress</MenuItem>
+                <MenuItem value="Completed">Completed</MenuItem>
               </Select>
             </FormControl>
           </Box>
