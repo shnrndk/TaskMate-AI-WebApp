@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import CalendarHeatmap from 'react-calendar-heatmap';
 import 'react-calendar-heatmap/dist/styles.css';
 import { jwtDecode } from 'jwt-decode';
-import { Button, Typography, Box, Grid, Tooltip, Paper } from '@mui/material';
+import { Button, Typography, Box, Grid, Paper } from '@mui/material';
+import { Tooltip } from 'react-tooltip';
 
 const ProductivityHeatMap = () => {
   const [dailyData, setDailyData] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [userId, setUserId] = useState(null);
+  const [tooltipContent, setTooltipContent] = useState('');
   const [selectedRange, setSelectedRange] = useState({
     start: '2024-01-01',
     end: '2025-01-01'
@@ -15,19 +17,6 @@ const ProductivityHeatMap = () => {
 
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        console.log('Decoded token:', decoded);
-        setUserId(decoded.id);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if(!userId) return;
@@ -42,12 +31,35 @@ const ProductivityHeatMap = () => {
           breakDuration: (parseInt(day.break_duration) / 3600).toFixed(2),
           efficiencyScore: parseFloat(day.efficiency_score)
         }));
-        console.log('Formatted data:', formattedData);
         setDailyData(formattedData);
         setMetrics(result.metrics);
       })
       .catch(console.error);
   }, [userId, selectedRange]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const decoded = jwtDecode(token);
+        setUserId(decoded.id);
+      } catch (error) {
+        console.error('Error decoding token:', error);
+      }
+    }
+  }, []);
+
+  const formatDate = (dateString) => {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-US', options);
+  };
+
+  const getEfficiencyLabel = (score) => {
+    if (score >= 8) return 'Excellent';
+    if (score >= 6) return 'Good';
+    if (score >= 4) return 'Fair';
+    return 'Needs Improvement';
+  };
 
   const selectYear = (year) => {
     setSelectedRange({
@@ -68,12 +80,46 @@ const ProductivityHeatMap = () => {
       
       dates.push({
         date: dateStr,
-        count: existingData ? existingData.efficiencyScore : 0
+        count: existingData ? existingData.efficiencyScore : 0,
+        data: existingData
       });
 
       currentDate.setDate(currentDate.getDate() + 1);
     }
     return dates;
+  };
+
+  const getTooltipContent = (value) => {
+    if (!value || !value.date) {
+      return 'No data available';
+    }
+
+    const dayData = value.data;
+    if (!dayData) {
+      return 'No activity on this day';
+    }
+
+    return `
+      <div class="text-sm p-2">
+        <div class="font-bold mb-2">${formatDate(dayData.date)}</div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="font-semibold">Efficiency:</div>
+          <div>${dayData.efficiencyScore}/10 (${getEfficiencyLabel(dayData.efficiencyScore)})</div>
+          
+          <div class="font-semibold">Tasks:</div>
+          <div>${dayData.tasksCompleted} completed</div>
+          
+          <div class="font-semibold">Pomodoros:</div>
+          <div>${dayData.pomodoroCycles} cycles</div>
+          
+          <div class="font-semibold">Work Time:</div>
+          <div>${dayData.workDuration} hours</div>
+          
+          <div class="font-semibold">Break Time:</div>
+          <div>${dayData.breakDuration} hours</div>
+        </div>
+      </div>
+    `;
   };
 
   return (
@@ -138,7 +184,7 @@ const ProductivityHeatMap = () => {
         </Paper>
       )}
 
-      <Box sx={{ overflowX: 'auto', mt: 4 }}>
+      <Box sx={{ overflowX: 'auto', mt: 4 }} className="relative">
         <CalendarHeatmap
           startDate={new Date(selectedRange.start)}
           endDate={new Date(selectedRange.end)}
@@ -151,25 +197,17 @@ const ProductivityHeatMap = () => {
             if (score >= 4) return 'color-scale-2';
             return 'color-scale-1';
           }}
-          tooltipDataAttrs={(value) => {
-            if (!value || !value.date) return { 'data-tip': 'No data available' };
-
-            const dayData = dailyData.find((d) => d.date === value.date);
-            if (!dayData) return { 'data-tip': 'No activity on this day' };
-
-            return {
-              'data-tip': `
-                Date: ${dayData.date}
-                Efficiency Score: ${dayData.efficiencyScore}
-                Tasks Completed: ${dayData.tasksCompleted}
-                Pomodoro Cycles: ${dayData.pomodoroCycles}
-                Work Duration: ${dayData.workDuration} hrs
-                Break Duration: ${dayData.breakDuration} hrs
-              `,
-            };
-          }}
+          tooltipDataAttrs={(value) => ({
+            'data-tooltip-id': 'heatmap-tooltip',
+            'data-tooltip-html': getTooltipContent(value)
+          })}
           showWeekdayLabels
           gutterSize={1}
+        />
+        <Tooltip 
+          id="heatmap-tooltip"
+          place="top"
+          html={true}
         />
       </Box>
 
