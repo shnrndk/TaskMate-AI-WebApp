@@ -76,17 +76,17 @@ const TaskList = () => {
 
   const handleDelete = async (id) => {
     try {
-      const response = await fetchWithAuth(`/api/tasks/${id}`, {
-        method: "DELETE",
+      const response = await fetchWithAuth(`/api/tasks/${id}/archive`, {
+        method: "PUT",
       });
       if (response.ok) {
         setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
       } else {
-        alert("Failed to delete the task.");
+        alert("Failed to archive the task.");
       }
     } catch (error) {
-      console.error("Error deleting task:", error);
-      alert("Failed to delete the task.");
+      console.error("Error archive task:", error);
+      alert("Failed to archive the task.");
     }
   };
 
