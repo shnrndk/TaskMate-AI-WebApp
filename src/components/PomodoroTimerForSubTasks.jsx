@@ -234,7 +234,6 @@ const PomodoroTimerForSubTasks = () => {
     return ((totalTime - time) / totalTime) * 100;
   };
 
-
   return (
     <Paper
       elevation={6}
