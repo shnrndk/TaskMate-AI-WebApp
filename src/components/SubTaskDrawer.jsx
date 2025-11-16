@@ -11,6 +11,7 @@ import {
   IconButton,
   Select,
   MenuItem,
+  Divider,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -20,17 +21,26 @@ import { useNavigate } from "react-router-dom";
 
 const SubTaskDrawer = ({ open, onClose, task }) => {
   const [subTasks, setSubTasks] = useState([]);
-  const navigate = useNavigate();
   const [newSubTask, setNewSubTask] = useState({
     title: "",
     priority: "Medium",
     duration: "",
   });
+
+  // 🔹 NEW: state for LLM-generated sub-tasks
+  const [generatedSubTasks, setGeneratedSubTasks] = useState([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isAddingGenerated, setIsAddingGenerated] = useState(false);
+
+  const navigate = useNavigate();
+
   useEffect(() => {
     if (task) {
       fetchSubTasks();
+      setGeneratedSubTasks([]); // reset generated list when switching tasks
     }
   }, [task]);
+
   const fetchSubTasks = async () => {
     const response = await fetchWithAuth(`/api/tasks/${task.id}/sub-tasks`);
     if (response.ok) {
@@ -71,17 +81,18 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
   };
 
   const handleStartSubTask = async (id) => {
-    navigate(`/sub-tasks/${id}/timer`)
+    navigate(`/sub-tasks/${id}/timer`);
   };
 
   const handleStatusChange = async (id, status) => {
     let tempSubTask;
     subTasks.map((subTask) => {
       if (subTask.id === id) {
-        tempSubTask = subTask;
-        tempSubTask.status = status;
+        tempSubTask = { ...subTask, status };
       }
+      return subTask;
     });
+
     const response = await fetchWithAuth(`/api/tasks/sub-tasks/${id}`, {
       method: "PUT",
       body: JSON.stringify({ ...tempSubTask }),
@@ -94,12 +105,75 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
     }
   };
 
+  // 🔹 NEW: call backend LLM to generate suggested sub-tasks
+  const handleGenerateSubTasks = async () => {
+    if (!task) return;
+    setIsGenerating(true);
+    try {
+      const response = await fetchWithAuth(
+        `/api/tasks/${task.id}/sub-tasks/generate`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            title: task.title,
+            description: task.description,
+            category: task.category,
+            duration: task.duration,
+            priority: task.priority,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        // Expecting { subTasks: [{ title, duration, priority }, ...] }
+        setGeneratedSubTasks(data.subTasks || []);
+      } else {
+        alert("Failed to generate sub-tasks.");
+      }
+    } catch (err) {
+      console.error("Error generating sub-tasks:", err);
+      alert("Error generating sub-tasks.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // 🔹 NEW: accept generated sub-tasks and save them via bulk API
+  const handleAddGeneratedSubTasks = async () => {
+    if (!generatedSubTasks.length) return;
+    setIsAddingGenerated(true);
+    try {
+      const response = await fetchWithAuth(
+        `/api/tasks/${task.id}/sub-tasks/bulk`,
+        {
+          method: "POST",
+          body: JSON.stringify({ subTasks: generatedSubTasks }),
+        }
+      );
+
+      if (response.ok) {
+        setGeneratedSubTasks([]);
+        fetchSubTasks();
+      } else {
+        alert("Failed to add generated sub-tasks.");
+      }
+    } catch (err) {
+      console.error("Error adding generated sub-tasks:", err);
+      alert("Error adding generated sub-tasks.");
+    } finally {
+      setIsAddingGenerated(false);
+    }
+  };
+
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
       <Box sx={{ width: 400, p: 3 }}>
         <Typography variant="h6" gutterBottom>
           Sub-Tasks for: {task?.title}
         </Typography>
+
+        {/* Existing sub-task list */}
         <List>
           {subTasks.map((subTask) => (
             <ListItem
@@ -132,9 +206,8 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
                     <Box>
                       <Select
                         value={subTask.status}
-                        onChange={(e) => {
+                        onChange={(e) =>
                           handleStatusChange(subTask.id, e.target.value)
-                        }
                         }
                         size="small"
                         sx={{ mt: 1 }}
@@ -150,7 +223,55 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
             </ListItem>
           ))}
         </List>
-        <Box sx={{ mt: 3 }}>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* 🔹 NEW: Generate sub-tasks section */}
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            AI-Generated Sub-Tasks
+          </Typography>
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={handleGenerateSubTasks}
+            disabled={isGenerating}
+            sx={{ mb: 2 }}
+          >
+            {isGenerating ? "Generating..." : "Generate Sub-Tasks"}
+          </Button>
+
+          {generatedSubTasks.length > 0 && (
+            <>
+              <List dense>
+                {generatedSubTasks.map((st, idx) => (
+                  <ListItem key={idx}>
+                    <ListItemText
+                      primary={st.title}
+                      secondary={`Priority: ${st.priority} | Duration: ${st.duration} mins`}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+              <Button
+                variant="contained"
+                color="secondary"
+                fullWidth
+                onClick={handleAddGeneratedSubTasks}
+                disabled={isAddingGenerated}
+              >
+                {isAddingGenerated
+                  ? "Adding Sub-Tasks..."
+                  : "Add Generated Sub-Tasks"}
+              </Button>
+            </>
+          )}
+        </Box>
+
+        <Divider sx={{ my: 2 }} />
+
+        {/* Manual add sub-task */}
+        <Box sx={{ mt: 1 }}>
           <Typography variant="subtitle1" gutterBottom>
             Add New Sub-Task
           </Typography>
