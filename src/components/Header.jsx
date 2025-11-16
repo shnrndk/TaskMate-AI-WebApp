@@ -1,5 +1,6 @@
 import React from "react";
 import { AppBar, Toolbar, Typography, Button, IconButton, Box } from "@mui/material";
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { Link, useNavigate } from "react-router-dom";
 import HomeIcon from "@mui/icons-material/Home";
 import BarChartIcon from "@mui/icons-material/BarChart";
@@ -44,7 +45,15 @@ const Header = () => {
             >
               Home
             </Button>
-
+            <Button
+              color="inherit"
+              component={Link}
+              to="/calendar"
+              startIcon={<CalendarMonthIcon />}
+              sx={{ textTransform: "none" }}
+            >
+              Calendar
+            </Button>
             <Button
               color="inherit"
               component={Link}

@@ -8,6 +8,7 @@ import PomodoroTimerForSubTasks from './components/PomodoroTimerForSubTasks';
 import ProtectedRoute from './components/ProtectedRoute';
 import ProductivityDashboard from './components/ProductivityCharts/ProductivityDashboard';
 import TaskStatsCharts from './components/ProductivityCharts/TaskStatsCharts';
+import CalendarPage from './components/CalendarPage';
 
 const AppRoutes = () => {
   return (
@@ -19,6 +20,7 @@ const AppRoutes = () => {
         path="/tasks/:id/timer"
         element={<ProtectedRoute><PomodoroTimer /></ProtectedRoute>}
       />
+      <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
       <Route
         path="/stats"
         element={<ProtectedRoute><ProductivityDashboard /></ProtectedRoute>}
