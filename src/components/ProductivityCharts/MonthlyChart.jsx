@@ -132,7 +132,9 @@ const MonthlyChart = () => {
           Next Month &gt;
         </Button>
       </Stack>
-      <Bar data={chartData} options={options} />
+             <Box sx={{ height: '400px', width: '100%', maxWidth: '800px', margin: '0 auto' }}>
+              <Bar data={chartData} options={options} />
+            </Box>
     </Box>
   );
 };
