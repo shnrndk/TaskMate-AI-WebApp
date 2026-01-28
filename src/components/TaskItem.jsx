@@ -1,181 +1,135 @@
-import React, { useState } from 'react';
+import React from "react";
 import {
-  Box,
+  Card,
+  CardContent,
   Typography,
   Button,
+  Chip,
   IconButton,
-  FormControl,
-  Select,
-  MenuItem,
-  Collapse,
-  InputLabel, // Import InputLabel for accessible Select
-} from '@mui/material';
+  Stack,
+  Tooltip
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import TimerIcon from '@mui/icons-material/Timer';
-import DeleteIcon from '@mui/icons-material/Delete';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CategoryIcon from '@mui/icons-material/Category';
 
 const TaskCard = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  // 🔹 NEW: Function to toggle expansion and provide ARIA announcement
-  const handleCardClick = () => {
-    setIsExpanded((prev) => {
-      const newState = !prev;
-      // You could use a separate ARIA live region if needed, but for simple collapse, 
-      // the state change on the button/div should suffice if properly handled.
-      return newState;
-    });
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "High":
+        return "error";
+      case "Medium":
+        return "warning";
+      case "Low":
+        return "success";
+      default:
+        return "default";
+    }
   };
-
-  const handleButtonClick = (e, callback) => {
-    e.stopPropagation(); // Prevent card expansion when clicking buttons
-    callback();
-  };
-
-  const statusId = `status-select-${task.id}`;
-  const statusLabelId = `status-label-${task.id}`;
 
   return (
-    <Box 
-      // 1. Give the card a button role and manage state for screen readers
-      role="button"
-      tabIndex={0} // Make the entire box focusable
-      aria-expanded={isExpanded} // Announce the expansion state
-      aria-controls={`task-details-${task.id}`} // Link to the collapsible content
-      onClick={handleCardClick}
-      onKeyDown={(e) => {
-        // Allow activation via Space or Enter keys for accessibility
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          handleCardClick();
-        }
-      }}
-      sx={{ 
-        backgroundColor: "white",
-        borderRadius: 2,
+    <Card
+      className="glass-card hover-glow"
+      sx={{
         mb: 2,
-        p: 2,
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        border: "1px solid rgba(0,0,0,0.12)",
-        cursor: "pointer",
-        transition: "all 0.2s ease",
-        '&:hover': {
-          boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
-        }
+        position: 'relative',
+        overflow: 'visible'
       }}
+      elevation={0}
     >
-      {/* Header - Always Visible */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 1 }}>
-        {/* 2. Group the title and expand icon for announcement */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontSize: "1.25rem", fontWeight: "500" }}>
-            {task.title}
-          </Typography>
-          {/* Icon visually indicates expansion state, no separate ARIA needed here */}
-          {isExpanded ? 
-            <KeyboardArrowUpIcon color="action" aria-hidden="true" /> : 
-            <KeyboardArrowDownIcon color="action" aria-hidden="true" />
-          }
-        </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
-          {/* 3. Timer Button - Explicit ARIA label */}
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<TimerIcon />}
-            onClick={(e) => handleButtonClick(e, () => onNavigate(task.id))}
+      <CardContent>
+        {/* Header: Priority & Category */}
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+          <Chip
             size="small"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.stopPropagation();
-              }
-            }}
-            aria-label={`Start Pomodoro timer for task ${task.title}`}
-          >
-            TIMER
-          </Button>
-          {/* 4. Delete Button - Explicit ARIA label */}
-          <IconButton 
-            size="small" 
-            onClick={(e) => handleButtonClick(e, () => onDelete(task.id))}
-            sx={{ color: "#ef5350" }}
-            aria-label={`Delete task ${task.title}`}
-          >
-            <DeleteIcon />
-          </IconButton>
-        </Box>
-      </Box>
+            label={task.priority}
+            color={getPriorityColor(task.priority)}
+            sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+          />
+          <Stack direction="row" alignItems="center" spacing={0.5} sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
+            <CategoryIcon fontSize="inherit" />
+            <Typography variant="caption">{task.category}</Typography>
+          </Stack>
+        </Stack>
 
-      {/* Basic Info - Always Visible */}
-      <Typography sx={{ color: "text.secondary", fontSize: "0.875rem", mb: isExpanded ? 2 : 0 }}>
-        Category: {task.category} • Priority: {task.priority} • Duration: {task.duration} minutes
-      </Typography>
-      
-      {/* Expandable Content */}
-      <Collapse in={isExpanded} id={`task-details-${task.id}`}>
-        <Box sx={{ mt: 2 }}>
-          {/* 5. Description Content */}
-          <Typography 
-            component="p" // Ensure semantic paragraph
-            sx={{ color: "text.secondary", mb: 2 }}
-          >
-            **Description:** {task.description}
-          </Typography>
-          
-          <Box sx={{ mb: 2 }}>
-            {/* 6. Status Select - Use FormControl and InputLabel for accessibility */}
-            <FormControl 
-              fullWidth 
-              onClick={(e) => e.stopPropagation()}
-              // Give the form control a unique accessible name
-              aria-label={`Change status of task ${task.title}`}
-            >
-              <InputLabel id={statusLabelId} size="small">Status</InputLabel>
-              <Select
-                labelId={statusLabelId}
-                id={statusId}
-                value={task.status}
-                onChange={(e) => onStatusChange(task.id, e.target.value)}
+        {/* Title & Description */}
+        <Typography variant="h6" gutterBottom fontWeight="600" sx={{ lineHeight: 1.3 }}>
+          {task.title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" paragraph sx={{ mb: 2, minHeight: '3em' }}>
+          {task.description || "No description provided."}
+        </Typography>
+
+        {/* Duration & Time */}
+        <Stack direction="row" spacing={2} sx={{ mb: 2, color: 'text.secondary' }}>
+          <Stack direction="row" alignItems="center" spacing={0.5}>
+            <AccessTimeIcon fontSize="small" />
+            <Typography variant="caption">{task.duration} min</Typography>
+          </Stack>
+        </Stack>
+
+        {/* Action Buttons */}
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}>
+          {/* Left: Functional Actions */}
+          <Stack direction="row" spacing={1}>
+            {task.status !== "Completed" && (
+              <Tooltip title={task.status === "In Progress" ? "View Timer" : "Start Timer"}>
+                <IconButton
+                  size="small"
+                  onClick={() => onNavigate(task.id)}
+                  sx={{
+                    bgcolor: task.status === "In Progress" ? 'primary.main' : 'rgba(233, 69, 96, 0.1)',
+                    color: task.status === "In Progress" ? 'white' : 'primary.main',
+                    '&:hover': {
+                      bgcolor: task.status === "In Progress" ? 'primary.dark' : 'primary.main',
+                      color: 'white'
+                    }
+                  }}
+                >
+                  <TimerIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
+            <Tooltip title="Sub-tasks">
+              <IconButton
                 size="small"
-                label="Status"
-                sx={{
-                  fontSize: '14px',
-                  '& .MuiSelect-select': {
-                    padding: '8px'
-                  }
-                }}
+                onClick={() => handleSubTasking(task)}
+                sx={{ bgcolor: 'rgba(255, 255, 255, 0.05)', '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.1)' } }}
               >
-                <MenuItem value="Pending">Pending</MenuItem>
-                <MenuItem value="In Progress">In Progress</MenuItem>
-                <MenuItem value="Completed">Completed</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
+                <PlaylistAddCheckIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
 
-          {/* 7. Sub-Task Button - Explicit ARIA label */}
-        <Button
-          fullWidth
-          variant="outlined"
-          color="primary"
-          onClick={(e) => handleButtonClick(e, () => handleSubTasking(task))}
-          // Add this block to prevent the parent row from capturing the Enter key
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.stopPropagation();
-            }
-          }}
-          sx={{ 
-            textTransform: "none",
-            fontWeight: "normal"
-          }}
-          aria-label={`Manage sub-tasks for ${task.title}`}
-        >
-          MANAGE SUB-TASKS
-        </Button>
-        </Box>
-      </Collapse>
-    </Box>
+          {/* Right: Status & Delete */}
+          <Stack direction="row" spacing={1}>
+            {task.status !== "Completed" && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="success"
+                onClick={() => onStatusChange(task.id, "Completed")}
+                sx={{ fontSize: '0.7rem', py: 0.5 }}
+              >
+                Done
+              </Button>
+            )}
+            <Tooltip title="Archive Task">
+              <IconButton
+                size="small"
+                onClick={() => onDelete(task.id)}
+                color="default"
+                sx={{ opacity: 0.7, '&:hover': { opacity: 1, color: 'error.main' } }}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 };
 

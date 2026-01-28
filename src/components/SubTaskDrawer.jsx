@@ -12,18 +12,23 @@ import {
   Select,
   MenuItem,
   Divider,
-  CircularProgress, // Import CircularProgress for better loading indication
-  InputLabel, // Import InputLabel for accessible Select
-  FormControl, // Import FormControl to group InputLabel and Select
+  CircularProgress,
+  InputLabel,
+  FormControl,
+  Paper,
+  Stack,
+  useTheme
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import { fetchWithAuth } from "../utils/api";
 import { useNavigate } from "react-router-dom";
 
 const SubTaskDrawer = ({ open, onClose, task }) => {
+  const theme = useTheme();
   const [subTasks, setSubTasks] = useState([]);
   const [newSubTask, setNewSubTask] = useState({
     title: "",
@@ -31,12 +36,10 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
     duration: "",
   });
 
-  // 🔹 NEW: state for LLM-generated sub-tasks
   const [generatedSubTasks, setGeneratedSubTasks] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAddingGenerated, setIsAddingGenerated] = useState(false);
-  
-  // 🔹 NEW: ARIA Live Region State
+
   const [liveMessage, setLiveMessage] = useState("");
 
   const navigate = useNavigate();
@@ -44,8 +47,7 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
   useEffect(() => {
     if (task) {
       fetchSubTasks();
-      setGeneratedSubTasks([]); // reset generated list when switching tasks
-      // 🔹 A11y: Announce when the drawer opens for a new task
+      setGeneratedSubTasks([]);
       setLiveMessage(`Sub-Task panel opened for task: ${task.title}`);
     }
   }, [task]);
@@ -55,11 +57,8 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
     if (response.ok) {
       const data = await response.json();
       setSubTasks(data);
-      // 🔹 A11y: Announce successful fetch if the list changes significantly
-      // (This is often too verbose, so we'll rely on the action handlers to announce)
     } else {
       setLiveMessage("Failed to fetch sub-tasks.");
-      // alert("Failed to fetch sub-tasks."); // Keeping silent alert for accessibility
     }
   };
 
@@ -75,10 +74,9 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
     if (response.ok) {
       setNewSubTask({ title: "", priority: "Medium", duration: "" });
       fetchSubTasks();
-      setLiveMessage(`Sub-task "${newSubTask.title}" added successfully.`); // 🔹 A11y
+      setLiveMessage(`Sub-task "${newSubTask.title}" added successfully.`);
     } else {
-      setLiveMessage("Failed to add sub-task."); // 🔹 A11y
-      // alert("Failed to add sub-task.");
+      setLiveMessage("Failed to add sub-task.");
     }
   };
 
@@ -90,15 +88,13 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
 
     if (response.ok) {
       fetchSubTasks();
-      setLiveMessage(`Sub-task "${subTaskToDelete?.title}" deleted.`); // 🔹 A11y
+      setLiveMessage(`Sub-task "${subTaskToDelete?.title}" deleted.`);
     } else {
-      setLiveMessage("Failed to delete sub-task."); // 🔹 A11y
-      // alert("Failed to delete sub-task.");
+      setLiveMessage("Failed to delete sub-task.");
     }
   };
 
   const handleStartSubTask = async (id) => {
-    // 🔹 A11y: Announce navigation/action
     const subTaskToStart = subTasks.find(st => st.id === id);
     setLiveMessage(`Starting Pomodoro timer for sub-task: ${subTaskToStart?.title}`);
     navigate(`/sub-tasks/${id}/timer`);
@@ -120,20 +116,18 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
     });
 
     if (response.ok) {
-      setSubTasks(updatedSubTasks); // Optimistic update
-      setLiveMessage(`Sub-task "${tempSubTask.title}" status changed to ${status}.`); // 🔹 A11y
+      setSubTasks(updatedSubTasks);
+      setLiveMessage(`Sub-task "${tempSubTask.title}" status changed to ${status}.`);
     } else {
-      setLiveMessage("Failed to update sub-task status."); // 🔹 A11y
-      // alert("Failed to update sub-task status.");
-      fetchSubTasks(); // Revert on failure
+      setLiveMessage("Failed to update sub-task status.");
+      fetchSubTasks();
     }
   };
 
-  // 🔹 NEW: call backend LLM to generate suggested sub-tasks
   const handleGenerateSubTasks = async () => {
     if (!task) return;
     setIsGenerating(true);
-    setLiveMessage("Generating sub-task suggestions using AI."); // 🔹 A11y
+    setLiveMessage("Generating sub-task suggestions using AI.");
     try {
       const response = await fetchWithAuth(
         `/api/tasks/${task.id}/sub-tasks/generate`,
@@ -154,28 +148,25 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
         const generated = data.subTasks || [];
         setGeneratedSubTasks(generated);
         if (generated.length > 0) {
-          setLiveMessage(`${generated.length} sub-tasks suggested by AI. Review and add.`); // 🔹 A11y
+          setLiveMessage(`${generated.length} sub-tasks suggested by AI. Review and add.`);
         } else {
           setLiveMessage("AI did not suggest any sub-tasks.");
         }
       } else {
-        setLiveMessage("Failed to generate sub-tasks."); // 🔹 A11y
-        // alert("Failed to generate sub-tasks.");
+        setLiveMessage("Failed to generate sub-tasks.");
       }
     } catch (err) {
       console.error("Error generating sub-tasks:", err);
-      setLiveMessage("Error generating sub-tasks."); // 🔹 A11y
-      // alert("Error generating sub-tasks.");
+      setLiveMessage("Error generating sub-tasks.");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // 🔹 NEW: accept generated sub-tasks and save them via bulk API
   const handleAddGeneratedSubTasks = async () => {
     if (!generatedSubTasks.length) return;
     setIsAddingGenerated(true);
-    setLiveMessage(`Adding ${generatedSubTasks.length} generated sub-tasks...`); // 🔹 A11y
+    setLiveMessage(`Adding ${generatedSubTasks.length} generated sub-tasks...`);
     try {
       const response = await fetchWithAuth(
         `/api/tasks/${task.id}/sub-tasks/bulk`,
@@ -189,15 +180,13 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
         const count = generatedSubTasks.length;
         setGeneratedSubTasks([]);
         fetchSubTasks();
-        setLiveMessage(`${count} generated sub-tasks added successfully.`); // 🔹 A11y
+        setLiveMessage(`${count} generated sub-tasks added successfully.`);
       } else {
-        setLiveMessage("Failed to add generated sub-tasks."); // 🔹 A11y
-        // alert("Failed to add generated sub-tasks.");
+        setLiveMessage("Failed to add generated sub-tasks.");
       }
     } catch (err) {
       console.error("Error adding generated sub-tasks:", err);
-      setLiveMessage("Error adding generated sub-tasks."); // 🔹 A11y
-      // alert("Error adding generated sub-tasks.");
+      setLiveMessage("Error adding generated sub-tasks.");
     } finally {
       setIsAddingGenerated(false);
     }
@@ -208,201 +197,179 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
       anchor="right"
       open={open}
       onClose={onClose}
-      // 1. Add accessible title to the drawer
-      aria-labelledby="sub-task-drawer-title" 
+      aria-labelledby="sub-task-drawer-title"
+      PaperProps={{
+        sx: {
+          width: { xs: '100%', sm: 450 },
+          backdropFilter: 'blur(20px)',
+          backgroundColor: theme.palette.mode === 'dark' ? 'rgba(30,30,30,0.9)' : 'rgba(255,255,255,0.9)',
+          borderLeft: '1px solid',
+          borderColor: 'divider'
+        }
+      }}
     >
-      <Box sx={{ width: 400, p: 3 }}>
-        {/* 2. ARIA Live Region for dynamic announcements */}
-        <Box 
-          aria-live="assertive" 
+      <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* ARIA Live Region */}
+        <Box
+          aria-live="assertive"
           sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
         >
           {liveMessage}
         </Box>
 
-        {/* 3. Assign an ID for the aria-labelledby property on the Drawer */}
-        <Typography variant="h6" gutterBottom id="sub-task-drawer-title">
-          Sub-Tasks for: **{task?.title}**
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h5" fontWeight="700" id="sub-task-drawer-title">
+            Sub-Tasks
+          </Typography>
+          <IconButton onClick={onClose} aria-label="Close drawer">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+          Project: {task?.title}
         </Typography>
-
-        {/* Existing sub-task list */}
-        <List aria-label={`Current sub-tasks for ${task?.title}`}>
-          {subTasks.map((subTask) => (
-            <ListItem
-              key={subTask.id}
-              // 4. Use role="group" or role="listitem" implicitly, but ensure actions are clear
-              // 5. Add a focusable element to wrap actions for keyboard navigation
-              secondaryAction={
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <IconButton
-                    edge="end"
-                    color="primary"
-                    onClick={() => handleStartSubTask(subTask.id)}
-                    // 6. Clear aria-label for icon button
-                    aria-label={`Start Pomodoro timer for ${subTask.title}`}
-                  >
-                    <PlayArrowIcon />
-                  </IconButton>
-                  <IconButton
-                    edge="end"
-                    onClick={() => handleDeleteSubTask(subTask.id)}
-                    // 6. Clear aria-label for icon button
-                    aria-label={`Delete sub-task ${subTask.title}`}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </Box>
-              }
-            >
-              <ListItemText
-                primary={subTask.title}
-                secondary={
-                  <Box>
-                    <Typography component="span" variant="body2" sx={{ mr: 1 }}>
-                        Priority: {subTask.priority} | Duration: {subTask.duration} mins
-                    </Typography>
-                    {/* 7. Wrap Select in FormControl and use InputLabel for accessibility */}
-                    <FormControl size="small" sx={{ mt: 1, minWidth: 120 }}>
-                      <InputLabel id={`status-label-${subTask.id}`}>Status</InputLabel>
-                      <Select
-                        labelId={`status-label-${subTask.id}`}
-                        id={`status-select-${subTask.id}`}
-                        value={subTask.status}
-                        onChange={(e) =>
-                          handleStatusChange(subTask.id, e.target.value)
-                        }
-                        label="Status"
-                        aria-label={`Change status of sub-task ${subTask.title}`}
-                      >
-                        <MenuItem value="Pending">Pending</MenuItem>
-                        <MenuItem value="In Progress">In Progress</MenuItem>
-                        <MenuItem value="Completed">Completed</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Box>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* 🔹 NEW: Generate sub-tasks section */}
-        <Box sx={{ mb: 3 }} aria-live="polite">
-          <Typography variant="subtitle1" gutterBottom>
-            AI-Generated Sub-Tasks
-          </Typography>
+        {/* Existing sub-task list */}
+        <Box sx={{ flex: 1, overflowY: 'auto', mb: 2 }}>
+          <List aria-label={`Current sub-tasks for ${task?.title}`}>
+            {subTasks.map((subTask) => (
+              <Paper key={subTask.id} variant="outlined" sx={{ mb: 2, p: 0, overflow: 'hidden', bgcolor: 'background.paper' }}>
+                <ListItem
+                  secondaryAction={
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        color="primary"
+                        onClick={() => handleStartSubTask(subTask.id)}
+                        aria-label={`Start timer for ${subTask.title}`}
+                      >
+                        <PlayArrowIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteSubTask(subTask.id)}
+                        aria-label={`Delete ${subTask.title}`}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  }
+                >
+                  <ListItemText
+                    primary={<Typography variant="subtitle1" fontWeight="600">{subTask.title}</Typography>}
+                    secondary={
+                      <Stack spacing={1} mt={1}>
+                        <Typography variant="caption" color="text.secondary">
+                          {subTask.priority} · {subTask.duration} mins
+                        </Typography>
+                        <FormControl size="small" fullWidth>
+                          <Select
+                            value={subTask.status}
+                            onChange={(e) => handleStatusChange(subTask.id, e.target.value)}
+                            // Removed label for cleaner look in list, relying on aria-label
+                            inputProps={{ 'aria-label': 'Sub-task status' }}
+                            sx={{ fontSize: '0.8rem', height: 32 }}
+                          >
+                            <MenuItem value="Pending">Pending</MenuItem>
+                            <MenuItem value="In Progress">In Progress</MenuItem>
+                            <MenuItem value="Completed">Completed</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Stack>
+                    }
+                  />
+                </ListItem>
+              </Paper>
+            ))}
+          </List>
+        </Box>
+
+        {/* AI Generation */}
+        <Box sx={{ mb: 3 }}>
           <Button
             variant="outlined"
             fullWidth
             onClick={handleGenerateSubTasks}
             disabled={isGenerating}
-            sx={{ mb: 2 }}
-            aria-busy={isGenerating}
-            // Show spinner if generating, otherwise no icon
-            startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : null}
+            startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+            sx={{ mb: 2, borderStyle: 'dashed' }}
           >
-            {isGenerating ? "Generating Suggestions..." : "Generate Sub-Tasks"}
+            {isGenerating ? "AI is thinking..." : "AI Suggest Sub-Tasks"}
           </Button>
 
           {generatedSubTasks.length > 0 && (
-            <>
-              <Typography variant="body2" sx={{ my: 1, fontWeight: 'bold' }}>
-                Suggested Sub-Tasks ({generatedSubTasks.length})
+            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'action.hover' }}>
+              <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                Suggested ({generatedSubTasks.length})
               </Typography>
-              <List dense aria-label="List of AI suggested sub-tasks">
+              <List dense>
                 {generatedSubTasks.map((st, idx) => (
-                  <ListItem key={idx}>
-                    <ListItemText
-                      primary={st.title}
-                      secondary={`Priority: ${st.priority} | Duration: ${st.duration} mins`}
-                    />
+                  <ListItem key={idx} disablePadding>
+                    <ListItemText primary={st.title} secondary={`${st.priority} · ${st.duration} min`} />
                   </ListItem>
                 ))}
               </List>
               <Button
                 variant="contained"
-                color="secondary"
                 fullWidth
+                size="small"
                 onClick={handleAddGeneratedSubTasks}
                 disabled={isAddingGenerated}
-                // 8. Add visual and accessible loading indicator
-                aria-busy={isAddingGenerated}
-                startIcon={isAddingGenerated ? <CircularProgress size={20} color="inherit" /> : null}
+                sx={{ mt: 1 }}
               >
-                {isAddingGenerated
-                  ? "Adding Sub-Tasks"
-                  : `Add ${generatedSubTasks.length} Generated Sub-Tasks`}
+                Add All
               </Button>
-            </>
+            </Paper>
           )}
         </Box>
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Manual add sub-task */}
-        <Box sx={{ mt: 1 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Add New Sub-Task Manually
+        {/* Manual Add */}
+        <Box component={Paper} elevation={0} sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
+          <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+            New Sub-Task
           </Typography>
-          {/* 9. Ensure TextFields have unique, clear labels */}
-          <TextField
-            fullWidth
-            label="Sub-Task Title"
-            id="new-sub-task-title"
-            value={newSubTask.title}
-            onChange={(e) =>
-              setNewSubTask((prev) => ({ ...prev, title: e.target.value }))
-            }
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Duration (minutes)"
-            id="new-sub-task-duration"
-            type="number"
-            value={newSubTask.duration}
-            onChange={(e) =>
-              setNewSubTask((prev) => ({ ...prev, duration: e.target.value }))
-            }
-            sx={{ mb: 2 }}
-          />
-          {/* 7. Wrap Select in FormControl and use InputLabel for accessibility */}
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel id="new-sub-task-priority-label">Priority</InputLabel>
-            <Select
-              labelId="new-sub-task-priority-label"
-              id="new-sub-task-priority"
-              value={newSubTask.priority}
-              onChange={(e) =>
-                setNewSubTask((prev) => ({ ...prev, priority: e.target.value }))
-              }
-              label="Priority"
+          <Stack spacing={2}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Title"
+              value={newSubTask.title}
+              onChange={(e) => setNewSubTask((prev) => ({ ...prev, title: e.target.value }))}
+            />
+            <Stack direction="row" spacing={1}>
+              <TextField
+                size="small"
+                type="number"
+                placeholder="Min"
+                value={newSubTask.duration}
+                onChange={(e) => setNewSubTask((prev) => ({ ...prev, duration: e.target.value }))}
+                sx={{ width: 80 }}
+              />
+              <FormControl size="small" fullWidth>
+                <Select
+                  value={newSubTask.priority}
+                  onChange={(e) => setNewSubTask((prev) => ({ ...prev, priority: e.target.value }))}
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="High">High</MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
+            <Button
+              startIcon={<AddIcon />}
+              variant="contained"
+              fullWidth
+              onClick={handleAddSubTask}
             >
-              <MenuItem value="Low">Low</MenuItem>
-              <MenuItem value="Medium">Medium</MenuItem>
-              <MenuItem value="High">High</MenuItem>
-            </Select>
-          </FormControl>
-          <Button
-            startIcon={<AddIcon />}
-            variant="contained"
-            color="primary"
-            onClick={handleAddSubTask}
-            aria-label="Add new sub-task to the list"
-          >
-            Add Sub-Task
-          </Button>
-          <Button
-            startIcon={<CloseIcon />}
-            variant="contained"
-            color="error"
-            aria-label="Close"
-            style={{ marginLeft: "50px" }}
-          >
-            Close
-          </Button>
+              Add
+            </Button>
+          </Stack>
         </Box>
       </Box>
     </Drawer>

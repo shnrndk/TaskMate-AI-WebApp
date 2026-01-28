@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { Typography, Box, Paper } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import { Typography, Box, Container } from "@mui/material"; // Added Container
 import { useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "../utils/api";
 import SubTaskDrawer from "./SubTaskDrawer";
@@ -12,10 +12,9 @@ const STATUSES = {
 };
 
 // --- ARIA Live Region State ---
-// This component manages the state that will be announced globally
 const AriaLiveRegion = ({ message }) => (
-  <Box 
-    aria-live="assertive" 
+  <Box
+    aria-live="assertive"
     sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
   >
     {message}
@@ -24,51 +23,74 @@ const AriaLiveRegion = ({ message }) => (
 
 // Kanban Column Component
 const KanbanColumn = ({ title, tasks, color, ...taskHandlers }) => {
-  // 1. Give the column container a semantic role of 'region' or 'list'
   return (
-    <Box sx={{ width: 350, mx: 2 }} role="region" aria-labelledby={`column-heading-${title}`}>
-      <Paper
+    <Box
+      sx={{
+        flex: 1,
+        minWidth: 300,
+        maxWidth: 400
+      }}
+      role="region"
+      aria-labelledby={`column-heading-${title}`}
+    >
+      <Box
         sx={{
-          backgroundColor: color,
           p: 2,
-          borderRadius: "8px 8px 0 0",
-          mb: 0,
+          borderBottom: `2px solid ${color}`,
+          mb: 2,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
         }}
       >
-        {/* 2. Add an ID for ARIA linking */}
-        <Typography 
+        <Typography
           id={`column-heading-${title}`}
-          sx={{ 
-            color: "white", 
-            textAlign: "center",
-            fontSize: "1.1rem",
-            fontWeight: "500"
+          variant="h6"
+          sx={{
+            fontWeight: "700",
+            color: 'text.primary',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+            fontSize: '0.9rem'
           }}
         >
-          {title} tasks ({tasks.length})
+          {title}
         </Typography>
-      </Paper>
-      <Paper
+        <Box sx={{
+          bgcolor: color,
+          color: 'white',
+          borderRadius: '50%',
+          width: 28,
+          height: 28,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '0.8rem',
+          fontWeight: 'bold'
+        }}>
+          {tasks.length}
+        </Box>
+      </Box>
+
+      <Box
+        className="glass-container"
         sx={{
           p: 2,
           minHeight: 200,
-          backgroundColor: "#f5f5f5",
-          borderRadius: "0 0 8px 8px",
+          borderRadius: 3,
           overflowY: "auto",
-          maxHeight: "calc(100vh - 250px)",
+          maxHeight: "calc(100vh - 300px)",
         }}
       >
         {tasks.length === 0 ? (
-          // 3. Announce empty state
-          <Typography 
-            sx={{ textAlign: "center", color: "text.secondary", py: 2 }}
+          <Typography
+            sx={{ textAlign: "center", color: "text.secondary", py: 4, fontStyle: 'italic' }}
             aria-live="polite"
           >
-            No tasks in the {title} column.
+            No tasks yet.
           </Typography>
         ) : (
-          // 4. Use role="list" and role="listitem" for task grouping
-          <Box role="list">
+          <Box role="list" sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {tasks.map((task) => (
               <Box key={task.id} role="listitem">
                 <TaskCard task={task} {...taskHandlers} />
@@ -76,7 +98,7 @@ const KanbanColumn = ({ title, tasks, color, ...taskHandlers }) => {
             ))}
           </Box>
         )}
-      </Paper>
+      </Box>
     </Box>
   );
 };
@@ -86,8 +108,8 @@ const TaskList = () => {
   const [tasks, setTasks] = useState([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
-  const [liveMessage, setLiveMessage] = useState("Task list loaded."); // Initialize ARIA message
-  
+  const [liveMessage, setLiveMessage] = useState("Task list loaded.");
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -102,7 +124,7 @@ const TaskList = () => {
           setLiveMessage("Failed to fetch tasks.");
         }
       } catch (error) {
-         setLiveMessage("Error loading tasks.");
+        setLiveMessage("Error loading tasks.");
       }
     };
     fetchTasks();
@@ -116,7 +138,7 @@ const TaskList = () => {
       });
       if (response.ok) {
         setTasks(prevTasks => prevTasks.filter(task => task.id !== id));
-        setLiveMessage(`Task: "${taskToDelete.title}" archived successfully.`); // 5. Announce deletion/archive
+        setLiveMessage(`Task: "${taskToDelete.title}" archived successfully.`);
       } else {
         setLiveMessage(`Failed to archive task: "${taskToDelete.title}".`);
       }
@@ -132,17 +154,17 @@ const TaskList = () => {
       if (!taskToUpdate) return;
 
       const updatedTask = { ...taskToUpdate, status: newStatus };
-      
+
       const response = await fetchWithAuth(`/api/tasks/${id}`, {
         method: "PUT",
         body: JSON.stringify(updatedTask),
       });
 
       if (response.ok) {
-        setTasks(prevTasks => 
+        setTasks(prevTasks =>
           prevTasks.map(task => task.id === id ? updatedTask : task)
         );
-        setLiveMessage(`Task: "${taskToUpdate.title}" status updated to ${newStatus}.`); // 5. Announce status change
+        setLiveMessage(`Task: "${taskToUpdate.title}" status updated to ${newStatus}.`);
       } else {
         setLiveMessage(`Failed to update status for task: "${taskToUpdate.title}".`);
       }
@@ -155,13 +177,13 @@ const TaskList = () => {
   const handleSubTasking = (task) => {
     setCurrentTask(task);
     setDrawerOpen(true);
-    setLiveMessage(`Opening sub-task manager for task: ${task.title}.`); // 5. Announce drawer opening
+    setLiveMessage(`Opening sub-task manager for task: ${task.title}.`);
   };
-  
+
   const handleDrawerClose = () => {
     setDrawerOpen(false);
     setCurrentTask(null);
-    setLiveMessage("Sub-task manager closed."); // 5. Announce drawer closing
+    setLiveMessage("Sub-task manager closed.");
   };
 
 
@@ -181,27 +203,25 @@ const TaskList = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* 6. Include the ARIA Live Region for global announcements */}
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <AriaLiveRegion message={liveMessage} />
-      
-      <Typography
-        variant="h4"
-        component="h1" // 7. Use semantic heading tag
-        sx={{ mb: 4, textAlign: "center", fontWeight: "500" }}
-      >
-        Your Tasks
-      </Typography>
-      
-      {/* 8. Use role="group" or "listbox" for the Kanban board container, making it a cohesive unit */}
-      <Box 
-        role="group" 
+
+      <Box sx={{ mb: 4, textAlign: 'center' }}>
+        <Typography variant="h3" component="h1" gutterBottom fontWeight="700" sx={{ background: 'linear-gradient(45deg, #E94560, #FF6B6B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          My Workspace
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary">
+          Manage your tasks efficiently
+        </Typography>
+      </Box>
+
+      <Box
+        role="group"
         aria-label="Task Kanban Board organized by status"
-        sx={{ 
+        sx={{
           display: "flex",
-          justifyContent: "center",
-          gap: 2,
-          width: "100%",
+          justifyContent: "space-between",
+          gap: 3,
           overflowX: "auto",
           pb: 2,
         }}
@@ -209,19 +229,19 @@ const TaskList = () => {
         <KanbanColumn
           title={STATUSES.PENDING}
           tasks={getTasksByStatus(STATUSES.PENDING)}
-          color="#f4511e"
+          color="#FF9F43" // Orange
           {...taskHandlers}
         />
         <KanbanColumn
           title={STATUSES.IN_PROGRESS}
           tasks={getTasksByStatus(STATUSES.IN_PROGRESS)}
-          color="#1976d2"
+          color="#54A0FF" // Blue
           {...taskHandlers}
         />
         <KanbanColumn
           title={STATUSES.COMPLETED}
           tasks={getTasksByStatus(STATUSES.COMPLETED)}
-          color="#2e7d32"
+          color="#1DD1A1" // Green
           {...taskHandlers}
         />
       </Box>
@@ -231,7 +251,7 @@ const TaskList = () => {
         onClose={handleDrawerClose}
         task={currentTask}
       />
-    </Box>
+    </Container>
   );
 };
 

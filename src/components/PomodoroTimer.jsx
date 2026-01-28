@@ -14,7 +14,7 @@ import {
 const PomodoroTimer = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // Constants
   const WORK_TIME = 25 * 60 * 1000; // 25 minutes in milliseconds
   const SHORT_BREAK = 5 * 60 * 1000; // 5 minutes
@@ -30,7 +30,7 @@ const PomodoroTimer = () => {
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [key, setKey] = useState(0); // Key for forcing Countdown remount
   const [liveMessage, setLiveMessage] = useState(""); // ARIA Live Region State
-  
+
   const countdownRef = useRef();
 
   // Audio Refs and State
@@ -45,7 +45,7 @@ const PomodoroTimer = () => {
     setIsMuted(muteSetting === "true");
     workCompleteSound.current.preload = "auto";
     breakCompleteSound.current.preload = "auto";
-    
+
     checkTaskStatus(); // Load initial state (moved up for clarity)
 
     return () => {
@@ -79,7 +79,7 @@ const PomodoroTimer = () => {
     const savedState = localStorage.getItem("pomodoroState");
     if (savedState) {
       const parsedState = JSON.parse(savedState);
-      
+
       if (parsedState.taskId === id) {
         const {
           count,
@@ -92,25 +92,27 @@ const PomodoroTimer = () => {
 
         // Check if the saved state is still valid (24 hours)
         const stateAge = Date.now() - lastUpdated;
-        if (stateAge < 24 * 60 * 60 * 1000) { 
+        if (stateAge < 24 * 60 * 60 * 1000) {
           setPomodoroCount(count);
           setIsBreak(isBreakSaved);
           setIsStarted(isStartedSaved);
           setTotalTime(totalTimeValue);
-          
+
           let effectiveEndTime = lastEndTime;
           if (lastEndTime <= Date.now() && isStartedSaved) {
-             // If timer finished while component was unmounted/inactive, transition to next phase
-             setLiveMessage(`The previous ${isBreakSaved ? 'break' : 'work'} session has ended. Please start the next phase.`);
-             setIsRunning(false); // Should be paused if end time passed
-             return; // Stop restoring running state
+            // If timer finished while component was unmounted/inactive, transition to next phase
+            setLiveMessage(`The previous ${isBreakSaved ? 'break' : 'work'} session has ended. Please start the next phase.`);
+            setIsRunning(false); // Should be paused if end time passed
+            return; // Stop restoring running state
           } else if (lastEndTime > Date.now()) {
             // Restore ongoing session
-            setEndTime(lastEndTime);
             if (isStartedSaved) {
+              setEndTime(lastEndTime);
               // Only set running if it was started, and we handle the pause/resume externally
               // We rely on checkTaskStatus for the *true* running state if integrated with backend
-              setIsRunning(true); 
+              setIsRunning(true);
+              // 🔹 NEW: Force remount to ensure Countdown picks up the autoStart=true immediately
+              setKey(prev => prev + 1);
             }
           }
         } else {
@@ -123,16 +125,19 @@ const PomodoroTimer = () => {
   // Save state on changes
   useEffect(() => {
     // Announce phase change for screen readers
-    const phaseName = isBreak 
+    const phaseName = isBreak
       ? (pomodoroCount % LONG_BREAK_THRESHOLD === 0 ? "Long Break" : "Short Break")
       : "Work Time";
-    
+
     // Announce if it's the start of a phase AND the timer is running
     if (isRunning && isStarted) {
       setLiveMessage(`${phaseName} has started. ${isBreak ? 'Time to relax.' : 'Focus now.'}`);
     } else if (isStarted) {
       setLiveMessage(`${phaseName} is ready to start or resume.`);
     }
+
+    // Prevent saving state if the timer hasn't started yet to avoid phantom sessions
+    if (!isStarted) return;
 
     localStorage.setItem("pomodoroState", JSON.stringify({
       taskId: id,
@@ -226,7 +231,7 @@ const PomodoroTimer = () => {
 
   const handleTimerComplete = async () => {
     setIsRunning(false);
-    
+
     if (isBreak) {
       // Switch to work period
       await playSound(true);
@@ -236,14 +241,14 @@ const PomodoroTimer = () => {
       setIsBreak(false); // State change triggers phase announcement in useEffect
       setKey(prev => prev + 1); // Force Countdown remount
       // Automatically resume work after break
-      await resumeTimer(false); 
+      await resumeTimer(false);
       setLiveMessage(`Break time is over. Starting work session number ${pomodoroCount + 1}.`);
     } else {
       // Switch to break period
       await playSound(false);
       const newCount = pomodoroCount + 1;
       setPomodoroCount(newCount);
-      
+
       const breakDuration = newCount % LONG_BREAK_THRESHOLD === 0 ? LONG_BREAK : SHORT_BREAK;
       const newEndTime = Date.now() + breakDuration;
       setEndTime(newEndTime);
@@ -265,26 +270,39 @@ const PomodoroTimer = () => {
         : "Short Break"
       : "Work Time";
   };
-  
+
   // Renderer with ARIA-hidden for visual elements
   const renderer = ({ minutes, seconds, completed }) => {
     if (completed) return null;
 
     const elapsed = totalTime - ((minutes * 60 + seconds) * 1000);
     const progress = (elapsed / totalTime) * 100;
-    
+
     // Format time for screen reader announcement (e.g., "25 minutes 0 seconds")
     const timeAnnouncement = `${minutes} minutes and ${seconds} seconds remaining.`;
 
     return (
-      <Box 
-        sx={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", my: 3 }}
+      <Box
+        sx={{
+          position: "relative",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          my: 3,
+          // Pulse animation when running
+          animation: isRunning ? 'pulse 2s infinite ease-in-out' : 'none',
+          '@keyframes pulse': {
+            '0%': { transform: 'scale(1)' },
+            '50%': { transform: 'scale(1.02)', filter: 'drop-shadow(0 0 8px rgba(25, 118, 210, 0.4))' },
+            '100%': { transform: 'scale(1)' },
+          }
+        }}
         // ARIA Live region to announce the remaining time on the screen
         role="timer"
         aria-label={`${getPhaseText()} timer. Time remaining: ${timeAnnouncement}`}
       >
         {/* Visual Timer - Hidden from screen readers */}
-        <Box sx={{ position: "relative", width: 200, height: 200 }} aria-hidden="true"> 
+        <Box sx={{ position: "relative", width: 200, height: 200 }} aria-hidden="true">
           <svg width="200" height="200" style={{ transform: 'rotate(-90deg)' }}>
             {/* ... (SVG circles for progress bar) ... */}
             <circle cx="100" cy="100" r="70" stroke="#e0e0e0" strokeWidth="12" fill="none" />
@@ -315,19 +333,19 @@ const PomodoroTimer = () => {
             {/* The time display is visible but aria-hidden because the parent role="timer" handles the announcement */}
             <Typography
               variant="h2"
-              sx={{ 
-                fontWeight: "bold", 
+              sx={{
+                fontWeight: "bold",
                 color: isBreak ? "#2e7d32" : "#1976d2"
               }}
-              aria-hidden="true" 
+              aria-hidden="true"
             >
               {`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`}
             </Typography>
           </Box>
         </Box>
-        
+
         {/* Hidden text for screen readers, only announces every 5 seconds or major events */}
-        <Typography 
+        <Typography
           sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
           aria-live="polite"
         >
@@ -351,16 +369,16 @@ const PomodoroTimer = () => {
         backgroundColor: isBreak ? "#f3f4f6" : "#fff",
       }}
       // Role main for primary content
-      role="main" 
+      role="main"
     >
       {/* 1. Use <h1> for the primary status/title */}
       <Typography variant="h4" component="h1" sx={{ mb: 2, fontWeight: "bold" }}>
         {getPhaseText()}
       </Typography>
-      
+
       {/* 2. ARIA Live Region for dynamic announcements (e.g., timer completion, phase change) */}
-      <Box 
-        aria-live="assertive" 
+      <Box
+        aria-live="assertive"
         sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
       >
         {liveMessage}
@@ -375,7 +393,7 @@ const PomodoroTimer = () => {
         autoStart={isRunning}
         key={key}
       />
-      
+
       {/* Control Buttons */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
         {!isStarted ? (
@@ -386,7 +404,7 @@ const PomodoroTimer = () => {
             disabled={isRunning}
             sx={{ px: 4, py: 1 }}
             // 3. Add explicit labels for clarity
-            aria-label="Start Pomodoro Task" 
+            aria-label="Start Pomodoro Task"
           >
             Start Task
           </Button>
@@ -425,14 +443,14 @@ const PomodoroTimer = () => {
           </>
         )}
       </Box>
-      
+
       <Typography variant="body1" sx={{ mt: 3, color: "#757575" }}>
         Pomodoro Cycles Completed:{" "}
         <Typography component="span" color="primary" fontWeight="bold">
           {pomodoroCount}
         </Typography>
       </Typography>
-      
+
       {/* Mute Button with Tooltip and IconButton */}
       <Box sx={{ display: "flex", justifyContent: "center", mt: 2, mb: 2 }}>
         <Tooltip title={isMuted ? "Unmute Notifications" : "Mute Notifications"}>
