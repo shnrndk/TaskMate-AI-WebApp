@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
+import CloseIcon from '@mui/icons-material/Close';
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { fetchWithAuth } from "../utils/api";
 import { useNavigate } from "react-router-dom";
@@ -298,11 +299,11 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
             onClick={handleGenerateSubTasks}
             disabled={isGenerating}
             sx={{ mb: 2 }}
-            // 8. Add visual and accessible loading indicator
             aria-busy={isGenerating}
+            // Show spinner if generating, otherwise no icon
             startIcon={isGenerating ? <CircularProgress size={20} color="inherit" /> : null}
           >
-            {isGenerating ? "Generating Suggestions" : "Generate Sub-Tasks"}
+            {isGenerating ? "Generating Suggestions..." : "Generate Sub-Tasks"}
           </Button>
 
           {generatedSubTasks.length > 0 && (
@@ -392,6 +393,15 @@ const SubTaskDrawer = ({ open, onClose, task }) => {
             aria-label="Add new sub-task to the list"
           >
             Add Sub-Task
+          </Button>
+          <Button
+            startIcon={<CloseIcon />}
+            variant="contained"
+            color="error"
+            aria-label="Close"
+            style={{ marginLeft: "50px" }}
+          >
+            Close
           </Button>
         </Box>
       </Box>

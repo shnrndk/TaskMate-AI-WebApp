@@ -86,6 +86,11 @@ const TaskCard = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
             startIcon={<TimerIcon />}
             onClick={(e) => handleButtonClick(e, () => onNavigate(task.id))}
             size="small"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.stopPropagation();
+              }
+            }}
             aria-label={`Start Pomodoro timer for task ${task.title}`}
           >
             TIMER
@@ -149,19 +154,25 @@ const TaskCard = ({ task, onDelete, onStatusChange, onNavigate, handleSubTasking
           </Box>
 
           {/* 7. Sub-Task Button - Explicit ARIA label */}
-          <Button
-            fullWidth
-            variant="outlined"
-            color="primary"
-            onClick={(e) => handleButtonClick(e, () => handleSubTasking(task))}
-            sx={{ 
-              textTransform: "none",
-              fontWeight: "normal"
-            }}
-            aria-label={`Manage sub-tasks for ${task.title}`}
-          >
-            MANAGE SUB-TASKS
-          </Button>
+        <Button
+          fullWidth
+          variant="outlined"
+          color="primary"
+          onClick={(e) => handleButtonClick(e, () => handleSubTasking(task))}
+          // Add this block to prevent the parent row from capturing the Enter key
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.stopPropagation();
+            }
+          }}
+          sx={{ 
+            textTransform: "none",
+            fontWeight: "normal"
+          }}
+          aria-label={`Manage sub-tasks for ${task.title}`}
+        >
+          MANAGE SUB-TASKS
+        </Button>
         </Box>
       </Collapse>
     </Box>
