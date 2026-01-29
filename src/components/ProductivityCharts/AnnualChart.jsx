@@ -10,18 +10,24 @@ const AnnualHeatMap = () => {
   const [dailyData, setDailyData] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [userId, setUserId] = useState(null);
-  const [tooltipContent, setTooltipContent] = useState('');
   const [selectedRange, setSelectedRange] = useState({
     start: `${new Date().getFullYear()}-01-01`,
     end: `${new Date().getFullYear() + 1}-01-01`
   });
+  // 🔹 NEW: ARIA Live Region State
+  const [liveMessage, setLiveMessage] = useState("Productivity dashboard loading.");
+
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 3, currentYear - 2, currentYear - 1, currentYear];
+
+  // Derive the currently selected year from the state
+  const selectedYear = new Date(selectedRange.start).getFullYear();
 
   useEffect(() => {
     if (!userId) return;
   
     const fetchData = async () => {
+      setLiveMessage(`Fetching productivity data for the year ${selectedYear}.`);
       try {
         const response = await fetchWithAuth(
           `/api/productivity-data?start_date=${selectedRange.start}&end_date=${selectedRange.end}`
@@ -39,8 +45,10 @@ const AnnualHeatMap = () => {
   
         setDailyData(formattedData);
         setMetrics(result.metrics);
+        setLiveMessage(`Data for ${selectedYear} loaded. Total tasks completed: ${result.metrics.total_tasks_completed}.`);
       } catch (error) {
         console.error("Error fetching productivity data:", error);
+        setLiveMessage(`Failed to load productivity data for ${selectedYear}.`);
       }
     };
   
@@ -56,6 +64,7 @@ const AnnualHeatMap = () => {
         setUserId(decoded.id);
       } catch (error) {
         console.error('Error decoding token:', error);
+        setLiveMessage("Error decoding user token.");
       }
     }
   }, []);
@@ -69,7 +78,8 @@ const AnnualHeatMap = () => {
     if (score >= 8) return 'Excellent';
     if (score >= 6) return 'Good';
     if (score >= 4) return 'Fair';
-    return 'Needs Improvement';
+    if (score > 0) return 'Needs Improvement';
+    return 'No activity';
   };
 
   const selectYear = (year) => {
@@ -77,6 +87,7 @@ const AnnualHeatMap = () => {
       start: `${year}-01-01`,
       end: `${year + 1}-01-01`
     });
+    setLiveMessage(`Viewing productivity data for the year ${year}.`);
   };
 
   const getFilledDates = () => {
@@ -132,20 +143,55 @@ const AnnualHeatMap = () => {
       </div>
     `;
   };
+  
+  // 🔹 NEW: Accessible Legend Content
+  const getAccessibleLegend = () => (
+    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }} aria-label="Efficiency Score Color Legend">
+      <Typography variant="caption">Less Productive (Efficiency Score)</Typography>
+      <Box sx={{ display: 'flex', gap: 0.5 }}>
+        <Box sx={{ width: 10, height: 10, backgroundColor: '#ebedf0', border: '1px solid #ccc' }} aria-label="Score 0 or no activity"></Box>
+        <Box sx={{ width: 10, height: 10, backgroundColor: '#d6e685' }} aria-label="Score 1-3 (Needs Improvement)"></Box>
+        <Box sx={{ width: 10, height: 10, backgroundColor: '#8cc665' }} aria-label="Score 4-5 (Fair)"></Box>
+        <Box sx={{ width: 10, height: 10, backgroundColor: '#44a340' }} aria-label="Score 6-7 (Good)"></Box>
+        <Box sx={{ width: 10, height: 10, backgroundColor: '#1e6823' }} aria-label="Score 8-10 (Excellent)"></Box>
+      </Box>
+      <Typography variant="caption">More Productive</Typography>
+    </Box>
+  );
 
   return (
     <Box sx={{ p: 3 }}>
+      {/* 1. ARIA Live Region */}
+      <Box 
+        aria-live="polite" 
+        sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
+      >
+        {liveMessage}
+      </Box>
+
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
-          Productivity Heatmap
+        {/* 2. Semantic Heading */}
+        <Typography variant="h5" component="h1" fontWeight="bold" gutterBottom>
+          Productivity Heatmap for {selectedYear}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Typography id="year-selection-label" variant="subtitle2" sx={{ mb: 1 }}>
+            Select a year to view data:
+        </Typography>
+        <Box 
+            sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}
+            role="radiogroup" // 3. Use radiogroup role for year selection
+            aria-labelledby="year-selection-label"
+        >
           {years.map((year) => (
             <Button
               key={year}
               variant={selectedRange.start === `${year}-01-01` ? 'contained' : 'outlined'}
               onClick={() => selectYear(year)}
               sx={{ textTransform: 'none', fontWeight: 'medium' }}
+              // 4. ARIA attributes for radio button behavior
+              role="radio"
+              aria-checked={selectedRange.start === `${year}-01-01`}
+              aria-label={`View data for year ${year}`}
             >
               {year}
             </Button>
@@ -154,7 +200,10 @@ const AnnualHeatMap = () => {
       </Box>
 
       {metrics && (
-        <Paper sx={{ mb: 4, p: 3 }}>
+        <Paper sx={{ mb: 4, p: 3 }} role="region" aria-label={`Summary Metrics for ${selectedYear}`}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Summary Metrics
+          </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={4}>
               <Typography>
@@ -195,7 +244,11 @@ const AnnualHeatMap = () => {
         </Paper>
       )}
 
-      <Box sx={{ overflowX: 'auto', mt: 4 }} className="relative">
+      <Box sx={{ overflowX: 'auto', mt: 4 }} className="relative" 
+           // 5. Use aria-label for the visualization container
+           aria-label={`Annual Productivity Heatmap based on Efficiency Score for ${selectedYear}`}
+           aria-describedby="heatmap-description"
+      >
         <CalendarHeatmap
           startDate={new Date(selectedRange.start)}
           endDate={new Date(selectedRange.end)}
@@ -210,7 +263,10 @@ const AnnualHeatMap = () => {
           }}
           tooltipDataAttrs={(value) => ({
             'data-tooltip-id': 'heatmap-tooltip',
-            'data-tooltip-html': getTooltipContent(value)
+            // 6. Provide accessible content for the square on focus/hover
+            'data-tooltip-html': getTooltipContent(value),
+            // Fallback aria-label for non-mouse users (screen readers might read this directly on focus)
+            'aria-label': value && value.date ? `${formatDate(value.date)}: Efficiency Score ${value.count}/10 (${getEfficiencyLabel(value.count)}).` : 'No data on this day.'
           })}
           showWeekdayLabels
           gutterSize={1}
@@ -221,7 +277,13 @@ const AnnualHeatMap = () => {
           html={true}
         />
       </Box>
-
+      
+      {/* 7. Provide a text-based description and legend for the heatmap */}
+      <Typography variant="body2" id="heatmap-description" sx={{ mt: 2 }}>
+        This chart displays your daily productivity over the year, where the color intensity of each square represents your daily Efficiency Score from 0 (lightest/no activity) to 10 (darkest/most efficient).
+      </Typography>
+      {getAccessibleLegend()}
+      
       <style jsx>{`
         .color-empty {
           fill: #ebedf0;

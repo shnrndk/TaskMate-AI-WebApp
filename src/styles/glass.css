@@ -1,0 +1,40 @@
+/* Glassmorphism Utilities - Minimalist Edition */
+.glass-container {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  /* Thinner, more subtle border */
+  box-shadow: none;
+  /* Removed shadow for flatness */
+}
+
+.glass-card {
+  background: rgba(30, 30, 30, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  box-shadow: none;
+  /* Minimalist */
+  transition: all 0.3s ease;
+}
+
+.glass-header {
+  /* Already handled by MUI Theme overrides mostly, but kept for utility usage */
+  background: rgba(18, 18, 18, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.hover-glow {
+  transition: all 0.2s ease;
+}
+
+.hover-glow:hover {
+  /* Subtle lift instead of glow */
+  transform: translateY(-2px);
+  /* background: removed to avoid accumulation or clash in light mode */
+  border-color: rgba(125, 125, 125, 0.3);
+}

@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { TextField, Button, Typography, Box } from "@mui/material";
+import {
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Paper,
+  Container,
+  Stack
+} from "@mui/material";
+import LoginIcon from '@mui/icons-material/Login';
+import { Link } from "react-router-dom";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -15,58 +25,91 @@ const Login = () => {
 
     if (response.ok) {
       const data = await response.json();
-      // Save the token to localStorage
       localStorage.setItem("token", data.token);
-      window.location = "/"; // Redirect to the home page
+      window.location = "/";
     } else {
       alert("Login failed. Please check your credentials.");
     }
   };
 
   return (
-    <Box
-      component="form"
-      sx={{
-        maxWidth: 400,
-        mx: "auto",
-        mt: 6,
-        p: 3,
-        border: "1px solid #ddd",
-        borderRadius: 2,
-        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.1)",
-      }}
-      onSubmit={handleSubmit}
-    >
-      <Typography variant="h5" align="center" gutterBottom>
-        Login
-      </Typography>
-      <TextField
-        fullWidth
-        label="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        sx={{ mb: 2 }}
-      />
-      <TextField
-        fullWidth
-        label="Password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        sx={{ mb: 2 }}
-      />
-      <Button
-        type="submit"
-        variant="contained"
-        color="primary"
-        fullWidth
-        sx={{ mt: 2 }}
+    <Container maxWidth="sm" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+      <Paper
+        elevation={0}
+        className="glass-card"
+        sx={{
+          p: 5,
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
       >
-        Login
-      </Button>
-    </Box>
+        <Box sx={{
+          bgcolor: 'secondary.main',
+          color: 'white',
+          p: 2,
+          borderRadius: '50%',
+          mb: 2,
+          boxShadow: '0 4px 20px rgba(15, 52, 96, 0.5)'
+        }}>
+          <LoginIcon fontSize="large" />
+        </Box>
+
+        <Typography component="h1" variant="h4" fontWeight="700" gutterBottom>
+          Welcome Back
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
+          Sign in to continue to your workspace
+        </Typography>
+
+        <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+          <Stack spacing={2}>
+            <TextField
+              required
+              fullWidth
+              id="email"
+              label="Email Address"
+              name="email"
+              autoComplete="email"
+              autoFocus
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <TextField
+              required
+              fullWidth
+              name="password"
+              label="Password"
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+              sx={{ mt: 2, py: 1.5, fontSize: '1rem', borderRadius: 2 }}
+            >
+              Sign In
+            </Button>
+          </Stack>
+
+          <Box sx={{ mt: 3, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Don't have an account?{' '}
+              <Link to="/register" style={{ color: '#E94560', textDecoration: 'none', fontWeight: 600 }}>
+                Register
+              </Link>
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+    </Container>
   );
 };
 

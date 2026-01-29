@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Navigate, useNavigate, useParams } from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { fetchWithAuth } from "../utils/api";
 import {
   Box,
@@ -11,11 +11,15 @@ import {
 
 const PomodoroTimerForSubTasks = () => {
   const { id } = useParams();
+  const Navigate = useNavigate();
+  
+  // Constants (in seconds)
   const WORK_TIME = 25 * 60;
   const SHORT_BREAK = 5 * 60;
   const LONG_BREAK = 15 * 60;
   const LONG_BREAK_THRESHOLD = 4;
 
+  // State
   const [time, setTime] = useState(WORK_TIME);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
@@ -23,7 +27,42 @@ const PomodoroTimerForSubTasks = () => {
   const [totalTime, setTotalTime] = useState(WORK_TIME);
   const [isStarted, setIsStarted] = useState(false);
   const [lastTimestamp, setLastTimestamp] = useState(null);
-  const Navigate = useNavigate();
+  
+  // ARIA Live Region State
+  const [liveMessage, setLiveMessage] = useState(""); 
+  
+  // Ref to track whether the timer is actively running, for the tick function
+  const isRunningRef = useRef(isRunning); 
+  isRunningRef.current = isRunning;
+  
+  // Ref to prevent multiple handleTimerEnd calls
+  const isHandlingEndRef = useRef(false);
+
+  // Helper to get the current phase name for announcements and display
+  const getPhaseText = (isBreakPhase = isBreak, count = pomodoroCount) => {
+    if (isBreakPhase) {
+      return count % LONG_BREAK_THRESHOLD === 0 ? "Long Break" : "Short Break";
+    }
+    return "Work Time";
+  };
+
+  // --- Accessibility Improvement: Announce Phase Changes ---
+  useEffect(() => {
+    if (isStarted) {
+      const phaseName = getPhaseText();
+      let message;
+      if (isRunning) {
+        message = `${phaseName} has started or resumed.`;
+      } else if (isBreak && !isRunning) {
+        message = `${phaseName} is paused.`;
+      } else if (!isBreak && !isRunning && time < totalTime) {
+        message = `Work Time is paused.`;
+      } else {
+        message = `${phaseName} is ready.`;
+      }
+      setLiveMessage(message);
+    }
+  }, [isBreak, isRunning, isStarted, time, totalTime]);
 
   // Handle visibility change for background tab timing
   useEffect(() => {
@@ -31,11 +70,12 @@ const PomodoroTimerForSubTasks = () => {
       if (document.hidden) {
         setLastTimestamp(Date.now());
       } else {
-        if (lastTimestamp && isRunning) {
+        if (lastTimestamp && isRunningRef.current) {
           const elapsedSeconds = Math.floor((Date.now() - lastTimestamp) / 1000);
+          
           setTime(prevTime => {
             const newTime = Math.max(0, prevTime - elapsedSeconds);
-            if (newTime === 0) {
+            if (newTime === 0 && !isHandlingEndRef.current) {
               handleTimerEnd();
             }
             return newTime;
@@ -47,7 +87,7 @@ const PomodoroTimerForSubTasks = () => {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [lastTimestamp, isRunning]);
+  }, [lastTimestamp]); // Removed isRunning from dependency array, relying on isRunningRef
 
   const checkTaskStatus = async () => {
     try {
@@ -66,6 +106,8 @@ const PomodoroTimerForSubTasks = () => {
 
   // Load saved state
   useEffect(() => {
+    checkTaskStatus(); // Check task status first
+
     const savedState = localStorage.getItem("pomodoroState");
     if (savedState) {
       const state = JSON.parse(savedState);
@@ -80,17 +122,14 @@ const PomodoroTimerForSubTasks = () => {
     }
   }, [id]);
 
-  useEffect(() => {
-    checkTaskStatus();
-  }, [id]);
-
-  // Save state periodically
+  // Save state periodically (60-second interval)
   useEffect(() => {
     const saveState = () => {
+      if (!isRunningRef.current) return; // Only save if actively running
       const state = {
         taskId: id,
         time,
-        isRunning,
+        isRunning: isRunningRef.current, // Use ref to get latest state in interval
         isBreak,
         pomodoroCount,
         totalTime,
@@ -98,36 +137,46 @@ const PomodoroTimerForSubTasks = () => {
       localStorage.setItem("pomodoroState", JSON.stringify(state));
     };
 
-    if (isRunning) {
-      saveState();
-    }
+    const interval = setInterval(saveState, 60000); // Save every minute
 
-    const interval = setInterval(() => {
-      if (isRunning) saveState();
-    }, 60000);
+    // Initial save on run or on mount if running
+    if (isRunning) saveState(); 
 
     return () => clearInterval(interval);
-  }, [id, time, isRunning, isBreak, pomodoroCount, totalTime]);
+  }, [id, isBreak, pomodoroCount, totalTime]); // Removed time and isRunning to prevent re-initializing interval on every tick
 
   // Main timer logic using requestAnimationFrame
   useEffect(() => {
     let animationFrameId;
     let lastTick = Date.now();
+    let secondsToSubtract = 0;
 
     const tick = () => {
-      if (isRunning) {
+      if (isRunningRef.current && !isHandlingEndRef.current) {
         const now = Date.now();
-        const delta = Math.floor((now - lastTick) / 1000);
+        const delta = now - lastTick;
 
-        if (delta >= 1) {
+        // Accumulate time passed
+        secondsToSubtract += delta;
+
+        // If at least one second has passed
+        if (secondsToSubtract >= 1000) {
+          const seconds = Math.floor(secondsToSubtract / 1000);
+          
           setTime(prevTime => {
-            const newTime = Math.max(0, prevTime - delta);
+            const newTime = Math.max(0, prevTime - seconds);
             if (newTime === 0) {
-              handleTimerEnd();
+              // Ensure we don't call handleTimerEnd multiple times in one tick
+              if (!isHandlingEndRef.current) {
+                 handleTimerEnd(); 
+              }
             }
             return newTime;
           });
-          lastTick = now;
+          
+          // Reset the timestamp and carry over the remainder
+          lastTick = now - (secondsToSubtract % 1000);
+          secondsToSubtract = secondsToSubtract % 1000;
         }
 
         animationFrameId = requestAnimationFrame(tick);
@@ -136,6 +185,7 @@ const PomodoroTimerForSubTasks = () => {
 
     if (isRunning) {
       lastTick = Date.now();
+      secondsToSubtract = 0;
       animationFrameId = requestAnimationFrame(tick);
     }
 
@@ -144,7 +194,7 @@ const PomodoroTimerForSubTasks = () => {
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [isRunning]);
+  }, [isRunning]); // Re-run effect when isRunning changes
 
   const startTask = async () => {
     try {
@@ -154,6 +204,7 @@ const PomodoroTimerForSubTasks = () => {
       setTotalTime(WORK_TIME);
       setTime(WORK_TIME);
       setIsBreak(false);
+      setLiveMessage("Task started. Work time has begun.");
     } catch (err) {
       console.error("Failed to start task:", err);
     }
@@ -163,6 +214,7 @@ const PomodoroTimerForSubTasks = () => {
     try {
       await fetchWithAuth(`/api/tasks/sub-tasks/${id}/pause`, { method: "PUT" });
       setIsRunning(false);
+      setLiveMessage("Work timer paused.");
     } catch (err) {
       console.error("Failed to auto-pause task:", err);
     }
@@ -172,9 +224,11 @@ const PomodoroTimerForSubTasks = () => {
     try {
       if (isBreak) {
         setIsRunning(true);
+        setLiveMessage("Break timer resumed.");
       } else {
         await fetchWithAuth(`/api/tasks/sub-tasks/${id}/resume`, { method: "PUT" });
         setIsRunning(true);
+        setLiveMessage("Work timer resumed.");
       }
     } catch (err) {
       console.error("Failed to resume task:", err);
@@ -185,7 +239,8 @@ const PomodoroTimerForSubTasks = () => {
     try {
       await fetchWithAuth(`/api/tasks/sub-tasks/${id}/finish`, { method: "PUT" });
       setIsRunning(false);
-      localStorage.removeItem("pomodoroState"); // Clear saved state when finishing
+      localStorage.removeItem("pomodoroState");
+      setLiveMessage("Task successfully finished and navigating to home.");
       Navigate("/");
     } catch (err) {
       console.error("Failed to finish task:", err);
@@ -194,21 +249,28 @@ const PomodoroTimerForSubTasks = () => {
 
   const pauseBreak = () => {
     setIsRunning(false);
+    setLiveMessage("Break timer paused.");
   };
 
   const resumeBreak = () => {
     setIsRunning(true);
+    setLiveMessage("Break timer resumed.");
   };
 
   const handleTimerEnd = async () => {
-    setIsRunning(false); // Ensure timer stops immediately
+    if (isHandlingEndRef.current) return;
+    isHandlingEndRef.current = true;
+    
+    setIsRunning(false);
 
     if (isBreak) {
       // End of break period
+      const newCount = pomodoroCount; // Use the current count
       setIsBreak(false);
       setTime(WORK_TIME);
       setTotalTime(WORK_TIME);
       await resumeTask();
+      setLiveMessage(`Break time is over. Starting work session number ${newCount + 1}.`);
     } else {
       // End of work period
       const newCount = pomodoroCount + 1;
@@ -221,7 +283,14 @@ const PomodoroTimerForSubTasks = () => {
       setIsBreak(true);
       
       await autoPauseTask();
+      const breakType = breakDuration === LONG_BREAK ? 'Long Break' : 'Short Break';
+      setLiveMessage(`Work session complete! Starting a ${breakType}. Timer is paused.`);
     }
+
+    // Allow new calls after a short delay
+    setTimeout(() => {
+      isHandlingEndRef.current = false;
+    }, 500); 
   };
 
   const formatTime = (seconds) => {
@@ -229,11 +298,20 @@ const PomodoroTimerForSubTasks = () => {
     const secs = seconds % 60;
     return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+  
+  const formatTimeForAria = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    
+    if (minutes > 0) {
+      return `${minutes} minutes and ${secs} seconds remaining.`;
+    }
+    return `${secs} seconds remaining.`;
+  };
 
   const calculateProgress = () => {
     return ((totalTime - time) / totalTime) * 100;
   };
-
 
   return (
     <Paper
@@ -247,16 +325,28 @@ const PomodoroTimerForSubTasks = () => {
         borderRadius: 4,
         backgroundColor: isBreak ? "#f3f4f6" : "#fff",
       }}
+      role="main"
     >
-      <Typography variant="h4" sx={{ mb: 2, fontWeight: "bold" }}>
-        {isBreak
-          ? pomodoroCount % LONG_BREAK_THRESHOLD === 0
-            ? "Long Break"
-            : "Short Break"
-          : "Work Time"}
+      {/* 1. Use <h1> for the primary status/title */}
+      <Typography variant="h4" component="h1" sx={{ mb: 2, fontWeight: "bold" }}>
+        {getPhaseText()}
       </Typography>
-      <Box sx={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", my: 3 }}>
-        <Box sx={{ position: "relative", width: 200, height: 200 }}>
+
+      {/* 2. ARIA Live Region for dynamic announcements */}
+      <Box 
+        aria-live="assertive" 
+        sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
+      >
+        {liveMessage}
+      </Box>
+
+      {/* Timer Display Box with ARIA Timer Role */}
+      <Box 
+        sx={{ position: "relative", display: "flex", justifyContent: "center", alignItems: "center", my: 3 }}
+        role="timer"
+        aria-label={`${getPhaseText()} timer. Time remaining: ${formatTimeForAria(time)}`}
+      >
+        <Box sx={{ position: "relative", width: 200, height: 200 }} aria-hidden="true">
           <CircularProgress
             variant="determinate"
             value={calculateProgress()}
@@ -277,15 +367,28 @@ const PomodoroTimerForSubTasks = () => {
               justifyContent: "center",
             }}
           >
+            {/* Time display marked aria-hidden since parent handles announcement */}
             <Typography
               variant="h2"
               sx={{ fontWeight: "bold", color: isBreak ? "#2e7d32" : "#1976d2" }}
+              aria-hidden="true"
             >
               {formatTime(time)}
             </Typography>
           </Box>
         </Box>
+        
+        {/* Hidden text for screen readers (Polite for periodic time update) */}
+        <Typography 
+          sx={{ position: 'absolute', clip: 'rect(0 0 0 0)', width: 1, height: 1, margin: -1, padding: 0, overflow: 'hidden' }}
+          aria-live="polite"
+        >
+          {/* Announce time only for every full minute or every 5 seconds */}
+          {time % 60 === 0 || time % 5 === 0 ? formatTimeForAria(time) : ''}
+        </Typography>
       </Box>
+
+      {/* Control Buttons with ARIA Labels */}
       <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
         {!isStarted && (
           <Button
@@ -294,6 +397,7 @@ const PomodoroTimerForSubTasks = () => {
             onClick={startTask}
             disabled={isRunning}
             sx={{ px: 4, py: 1 }}
+            aria-label="Start Pomodoro Task: Begin the first work session"
           >
             Start Task
           </Button>
@@ -306,6 +410,7 @@ const PomodoroTimerForSubTasks = () => {
               onClick={autoPauseTask}
               disabled={!isRunning}
               sx={{ px: 4, py: 1 }}
+              aria-label="Pause the current Work session"
             >
               Pause Work
             </Button>
@@ -315,21 +420,11 @@ const PomodoroTimerForSubTasks = () => {
               onClick={resumeTask}
               disabled={isRunning}
               sx={{ px: 4, py: 1 }}
+              aria-label="Resume the current Work session"
             >
               Resume Work
             </Button>
           </>
-        )}
-        {isStarted && (
-                  <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={finishTask}
-                  disabled={isRunning}
-                  sx={{ px: 4, py: 1 }}
-                >
-                  Finish Task
-                </Button>
         )}
         {isStarted && isBreak && (
           <>
@@ -339,6 +434,7 @@ const PomodoroTimerForSubTasks = () => {
               onClick={pauseBreak}
               disabled={!isRunning}
               sx={{ px: 4, py: 1 }}
+              aria-label="Pause the current Break session"
             >
               Pause Break
             </Button>
@@ -348,10 +444,24 @@ const PomodoroTimerForSubTasks = () => {
               onClick={resumeBreak}
               disabled={isRunning}
               sx={{ px: 4, py: 1 }}
+              aria-label="Resume the current Break session"
             >
               Resume Break
             </Button>
           </>
+        )}
+        {isStarted && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={finishTask}
+            // Disabled when running to prevent accidental task completion
+            disabled={isRunning} 
+            sx={{ px: 4, py: 1 }}
+            aria-label="Finish and complete the Pomodoro Task"
+          >
+            Finish Task
+          </Button>
         )}
       </Box>
       <Typography variant="body1" sx={{ mt: 3, color: "#757575" }}>
